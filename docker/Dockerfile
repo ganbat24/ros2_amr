@@ -32,6 +32,8 @@ RUN apt-get update && apt-get install -y \
      \
     ros-jazzy-ros-gz-bridge \
     ros-jazzy-ros-gz-image \
+    ros-jazzy-ros-gz-sim \
+    ros-jazzy-rmw-cyclonedds-cpp \
     ros-jazzy-sensor-msgs \
     ros-jazzy-geometry-msgs \
     ros-jazzy-tf2-ros \
