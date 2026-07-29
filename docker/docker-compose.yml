@@ -29,6 +29,7 @@ services:
       - /dev/dri:/dev/dri
     group_add:
       - video
+      - render
     network_mode: host
     ipc: host
     command: >
@@ -56,6 +57,7 @@ services:
       - /dev/dri:/dev/dri
     group_add:
       - video
+      - render
     network_mode: host
     ipc: host
     command: >

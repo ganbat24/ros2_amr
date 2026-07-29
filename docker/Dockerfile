@@ -64,11 +64,12 @@ RUN apt-get update && apt-get install -y \
 # Pre-compile setup
 COPY ./src /ros2_ws/src
 WORKDIR /ros2_ws
-RUN rosdep update && rosdep install --from-paths src --ignore-src -r -y && \
+RUN rosdep update && apt-get update && rosdep install --from-paths src --ignore-src -r -y && \
     colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
 
 # Source the workspace by default
-RUN echo "source /opt/ros/${ROS_DISTRO}/setup.bash" >> /root/.bashrc && \
-    echo "source /ros2_ws/install/setup.bash" >> /root/.bashrc
+COPY ./docker/entrypoint.sh /ros_entrypoint.sh
+RUN chmod +x /ros_entrypoint.sh
 
+ENTRYPOINT ["/ros_entrypoint.sh"]
 CMD ["bash"]
