@@ -13,12 +13,12 @@ jobs:
           apt-get update && apt-get install -y \
             ros-jazzy-ament-cmake \
             ros-jazzy-ament-lint \
+            python3-colcon \
             python3-yaml
       - name: Run ament_lint_auto
         run: |
           source /opt/ros/jazzy/setup.bash
           colcon build --packages-select amr_description amr_control amr_simulation amr_sensors amr_localization amr_navigation amr_bringup --cmake-args -DCMAKE_BUILD_TYPE=Release
-          # lint runs during build
 
   colcon_test:
     runs-on: ubuntu-latest
@@ -29,7 +29,8 @@ jobs:
         run: |
           apt-get update && apt-get install -y \
             ros-jazzy-ament-cmake \
-            ros-jazzy-ament-launch-test \
+            ros-jazzy-launch-testing \
+            python3-colcon \
             python3-yaml
       - name: Run colcon test
         run: |
@@ -41,5 +42,5 @@ jobs:
         with:
           name: colcon-test-results
           path: |
-            amr_ws/build/**/test_results/**
-            amr_ws/log/**/**
+            build/**/test_results/**
+            log/**/**
