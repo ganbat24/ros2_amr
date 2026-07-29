@@ -1,0 +1,26 @@
+{
+  "name": "AMR Base Stack — Dev Container",
+  "build": {
+    "context": "..",
+    "dockerfile": "docker/Dockerfile"
+  },
+  "workspaceFolder": "/ros2_ws",
+  "mounts": [
+    "source=${localWorkspaceFolder},target=/ros2_ws,type=bind,consistency=cached"
+  ],
+  "runArgs": [
+    "--net=host",
+    "--ipc=host",
+    "--privileged"
+  ],
+  "postCreateCommand": "bash -lc 'source /opt/ros/jazzy/setup.bash && colcon build --symlink-install'",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-iot.vscode-ros2",
+        "ms-python.python",
+        "ms-azuretools.vscode-docker"
+      ]
+    }
+  }
+}
