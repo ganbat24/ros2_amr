@@ -72,8 +72,6 @@ nav2_smac_planner2d:
   ubuntu: [ros-jazzy-nav2-smac-planner]
 nav2_dwb_controller:
   ubuntu: [ros-jazzy-nav2-dwb-controller]
-nav2_recoveries:
-  ubuntu: [ros-jazzy-nav2-recoveries]
 robot_localization:
   ubuntu: [ros-jazzy-robot-localization]
 slam_toolbox:
