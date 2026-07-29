@@ -34,16 +34,14 @@ ros2_controllers:
   ubuntu: [ros-jazzy-ros2-controllers]
 controller_manager:
   ubuntu: [ros-jazzy-controller-manager]
-gazebo_ros:
-  ubuntu: [ros-jazzy-gz-ros2-control]
-gazebo_plugins:
-  ubuntu: [ros-jazzy-gz-plugins]
-gazebo_ros2_control:
-  ubuntu: [ros-jazzy-gz-ros2-control]
+ros_gz_sim:
+  ubuntu: [ros-jazzy-ros-gz-sim]
 ros_gz_bridge:
   ubuntu: [ros-jazzy-ros-gz-bridge]
 ros_gz_image:
   ubuntu: [ros-jazzy-ros-gz-image]
+gz_ros2_control:
+  ubuntu: [ros-jazzy-gz-ros2-control]
 
 # Navigation & perception
 sensor_msgs:
