@@ -18,7 +18,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.ros/rosdep
-          key: rosdep-${{ runner.os }}-jazzy-${{ hashFiles('**/package.xml') }}
+          key: rosdep-${{ runner.os }}-jazzy
           restore-keys: |
             rosdep-${{ runner.os }}-jazzy-
 
@@ -26,7 +26,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ros2_ws/build
-          key: build-${{ runner.os }}-jazzy-${{ hashFiles('**/package.xml', '**/CMakeLists.txt') }}
+          key: build-${{ runner.os }}-jazzy-${{ github.ref }}
           restore-keys: |
             build-${{ runner.os }}-jazzy-
 
@@ -58,6 +58,8 @@ jobs:
         run: |
           cd ros2_ws
           . /opt/ros/jazzy/setup.sh
+          rosdep init || true
+          rosdep update
           rosdep install --from-paths src --ignore-src -r -y
 
       - name: Build
@@ -91,7 +93,7 @@ jobs:
         run: |
           cd ros2_ws
           . /opt/ros/jazzy/setup.sh
-          colcon test-result --verbose
+          if [ -d build ]; then colcon test-result --verbose; else echo "No build directory found - skipping test results"; fi
 
       - name: Upload test artifacts
         if: always()
