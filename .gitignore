@@ -1,0 +1,36 @@
+# ROS 2 build artifacts
+build/
+install/
+log/
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# C/C++ build artifacts
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+cmake-build-*/
+
+# Misc
+*.egg-info/
+dist/
