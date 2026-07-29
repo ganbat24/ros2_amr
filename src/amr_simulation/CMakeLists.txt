@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD 20)
 find_package(ament_cmake REQUIRED)
 
 install(
-  DIRECTORY worlds launch config
+  DIRECTORY config
   DESTINATION share/${PROJECT_NAME}
 )
 
