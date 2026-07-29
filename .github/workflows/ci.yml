@@ -3,44 +3,101 @@ name: AMR Base Stack CI
 on: [push, pull_request]
 
 jobs:
-  ament_lint:
-    runs-on: ubuntu-latest
-    container: ros:jazzy-ros-base
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install dependencies
-        run: |
-          apt-get update && apt-get install -y \
-            ros-jazzy-ament-cmake \
-            ros-jazzy-ament-lint \
-            python3-colcon \
-            python3-yaml
-      - name: Run ament_lint_auto
-        run: |
-          source /opt/ros/jazzy/setup.bash
-          colcon build --packages-select amr_description amr_control amr_simulation amr_sensors amr_localization amr_navigation amr_bringup --cmake-args -DCMAKE_BUILD_TYPE=Release
+  build-and-lint:
+    runs-on: ubuntu-24.04
+    container:
+      image: ros:jazzy-ros-base-noble
 
-  colcon_test:
-    runs-on: ubuntu-latest
-    container: ros:jazzy-ros-base
     steps:
-      - uses: actions/checkout@v4
-      - name: Install dependencies
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          path: ros2_ws/src
+
+      - name: Cache rosdep
+        uses: actions/cache@v4
+        with:
+          path: ~/.ros/rosdep
+          key: rosdep-${{ runner.os }}-jazzy-${{ hashFiles('**/package.xml') }}
+          restore-keys: |
+            rosdep-${{ runner.os }}-jazzy-
+
+      - name: Cache build
+        uses: actions/cache@v4
+        with:
+          path: ros2_ws/build
+          key: build-${{ runner.os }}-jazzy-${{ hashFiles('**/package.xml', '**/CMakeLists.txt') }}
+          restore-keys: |
+            build-${{ runner.os }}-jazzy-
+
+      - name: Install system dependencies
         run: |
-          apt-get update && apt-get install -y \
-            ros-jazzy-ament-cmake \
-            ros-jazzy-launch-testing \
-            python3-colcon \
+          set -e
+          apt-get update
+          apt-get install -y \
+            curl \
+            gnupg \
+            lsb-release \
+            python3-rosdep \
+            python3-colcon-common-extensions \
+            python3-pip \
+            python3-pytest \
             python3-yaml
-      - name: Run colcon test
+          curl -sSL https://packages.osrfoundation.org/gazebo.gpg \
+            -o /usr/share/keyrings/pkgs-osrf-archive-keyring.gpg
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/pkgs-osrf-archive-keyring.gpg] \
+            http://packages.osrfoundation.org/gazebo/ubuntu-stable $(lsb_release -cs) main" \
+            > /etc/apt/sources.list.d/gazebo-stable.list
+          apt-get update
+          apt-get install -y \
+            gz-harmonic \
+            ros-jazzy-ros-gz \
+            ros-jazzy-gz-ros2-control
+
+      - name: rosdep install
         run: |
-          source /opt/ros/jazzy/setup.bash
-          colcon test --packages-select amr_description amr_control amr_simulation amr_sensors amr_localization amr_navigation amr_bringup
-      - name: Upload test results
-        uses: actions/upload-artifact@v4
+          cd ros2_ws
+          . /opt/ros/jazzy/setup.sh
+          rosdep install --from-paths src --ignore-src -r -y
+
+      - name: Build
+        run: |
+          cd ros2_ws
+          . /opt/ros/jazzy/setup.sh
+          colcon build \
+            --symlink-install \
+            --cmake-args -DCMAKE_BUILD_TYPE=Release \
+            --event-handlers console_cohesion+
+
+      - name: Lint Python (flake8)
+        run: |
+          cd ros2_ws
+          . /opt/ros/jazzy/setup.sh
+          python3 -m flake8 src/ \
+            --max-line-length=100 \
+            --extend-ignore=E203,D100,D101,D103,D104,D107,D301,D400,I100,I101,I201,Q000,CNL100 \
+            --exclude=__pycache__
+
+      - name: Test
+        run: |
+          cd ros2_ws
+          . /opt/ros/jazzy/setup.sh
+          colcon test \
+            --event-handlers console_cohesion+ \
+            --return-code-on-test-failure
+
+      - name: Test results
         if: always()
+        run: |
+          cd ros2_ws
+          . /opt/ros/jazzy/setup.sh
+          colcon test-result --verbose
+
+      - name: Upload test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
           name: colcon-test-results
           path: |
-            build/**/test_results/**
-            log/**/**
+            ros2_ws/build/**/test_results/**
+            ros2_ws/log/**/**
