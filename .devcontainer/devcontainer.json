@@ -6,13 +6,18 @@
   },
   "workspaceFolder": "/ros2_ws",
   "mounts": [
-    "source=${localWorkspaceFolder},target=/ros2_ws,type=bind,consistency=cached"
+    "source=${localWorkspaceFolder},target=/ros2_ws,type=bind,consistency=cached",
+    "source=/tmp/.X11-unix,target=/tmp/.X11-unix,type=bind"
   ],
   "runArgs": [
     "--net=host",
     "--ipc=host",
     "--privileged"
   ],
+  "containerEnv": {
+    "DISPLAY": "${localEnv:DISPLAY}",
+    "QT_X11_NO_MITSHM": "1"
+  },
   "postCreateCommand": "bash -lc 'source /opt/ros/jazzy/setup.bash && colcon build --symlink-install'",
   "customizations": {
     "vscode": {
