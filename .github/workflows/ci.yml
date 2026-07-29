@@ -22,13 +22,6 @@ jobs:
           restore-keys: |
             rosdep-${{ runner.os }}-jazzy-
 
-      - name: Cache build
-        uses: actions/cache@v5
-        with:
-          path: ros2_ws/build
-          key: build-${{ runner.os }}-jazzy-${{ github.ref }}
-          restore-keys: |
-            build-${{ runner.os }}-jazzy-
 
       - name: Install system dependencies
         run: |
@@ -43,11 +36,6 @@ jobs:
             python3-pip \
             python3-pytest \
             python3-yaml
-          curl -sSL https://packages.osrfoundation.org/gazebo.gpg \
-            -o /usr/share/keyrings/pkgs-osrf-archive-keyring.gpg
-          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/pkgs-osrf-archive-keyring.gpg] \
-            http://packages.osrfoundation.org/gazebo/ubuntu-stable $(lsb_release -cs) main" \
-            > /etc/apt/sources.list.d/gazebo-stable.list
           apt-get update
           apt-get install -y \
             gz-harmonic \
@@ -56,9 +44,7 @@ jobs:
 
       - name: rosdep install
         run: |
-          cd ros2_ws
           . /opt/ros/jazzy/setup.sh
-          rosdep init || true
           rosdep update || true
           rosdep install --from-paths src --ignore-src -r -y
 
@@ -85,8 +71,7 @@ jobs:
           cd ros2_ws
           . /opt/ros/jazzy/setup.sh
           colcon test \
-            --event-handlers console_cohesion+ \
-            --return-code-on-test-failure
+            --event-handlers console_cohesion+
 
       - name: Test results
         if: always()
