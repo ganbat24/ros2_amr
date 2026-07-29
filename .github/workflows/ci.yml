@@ -38,7 +38,6 @@ jobs:
             python3-yaml
           apt-get update
           apt-get install -y \
-            gz-harmonic \
             ros-jazzy-ros-gz \
             ros-jazzy-gz-ros2-control
 
