@@ -1,0 +1,102 @@
+# AMR Base Stack — rosdep dependencies
+# Install with:
+#   rosdep update
+#   rosdep install --from-paths src --ignore-src -r -y
+
+# Build tools
+ament_cmake:
+  ubuntu: [ros-jazzy-ament-cmake]
+ament_lint:
+  ubuntu: [ros-jazzy-ament-lint]
+ament_cmake_pytest:
+  ubuntu: [ros-jazzy-ament-cmake-pytest]
+launch_testing:
+  ubuntu: [ros-jazzy-launch-testing]
+xacro:
+  ubuntu: [ros-jazzy-xacro]
+
+# Core runtime
+urdf:
+  ubuntu: [ros-jazzy-urdf]
+urdfdom:
+  ubuntu: [liburdfdom-dev]
+urdfdom_py:
+  ubuntu: [ros-jazzy-urdfdom-py]
+robot_state_publisher:
+  ubuntu: [ros-jazzy-robot-state-publisher]
+joint_state_publisher:
+  ubuntu: [ros-jazzy-joint-state-publisher]
+joint_state_publisher_gui:
+  ubuntu: [ros-jazzy-joint-state-publisher-gui]
+ros2_control:
+  ubuntu: [ros-jazzy-ros2-control]
+ros2_controllers:
+  ubuntu: [ros-jazzy-ros2-controllers]
+controller_manager:
+  ubuntu: [ros-jazzy-controller-manager]
+gazebo_ros:
+  ubuntu: [ros-jazzy-gz-ros2-control]
+gazebo_plugins:
+  ubuntu: [ros-jazzy-gz-plugins]
+gazebo_ros2_control:
+  ubuntu: [ros-jazzy-gz-ros2-control]
+ros_gz_bridge:
+  ubuntu: [ros-jazzy-ros-gz-bridge]
+ros_gz_image:
+  ubuntu: [ros-jazzy-ros-gz-image]
+
+# Navigation & perception
+sensor_msgs:
+  ubuntu: [ros-jazzy-sensor-msgs]
+geometry_msgs:
+  ubuntu: [ros-jazzy-geometry-msgs]
+tf2_ros:
+  ubuntu: [ros-jazzy-tf2-ros]
+nav_msgs:
+  ubuntu: [ros-jazzy-nav-msgs]
+nav2_bringup:
+  ubuntu: [ros-jazzy-navigation2]
+nav2_bt_navigator:
+  ubuntu: [ros-jazzy-nav2-bt-navigator]
+nav2_controller:
+  ubuntu: [ros-jazzy-nav2-controller]
+nav2_planner:
+  ubuntu: [ros-jazzy-nav2-planner]
+nav2_behaviors:
+  ubuntu: [ros-jazzy-nav2-behaviors]
+nav2_costmap_2d:
+  ubuntu: [ros-jazzy-nav2-costmap-2d]
+nav2_lifecycle_manager:
+  ubuntu: [ros-jazzy-nav2-lifecycle-manager]
+nav2_map_server:
+  ubuntu: [ros-jazzy-nav2-map-server]
+nav2_smac_planner2d:
+  ubuntu: [ros-jazzy-nav2-smac-planner]
+nav2_dwb_controller:
+  ubuntu: [ros-jazzy-nav2-dwb-controller]
+nav2_recoveries:
+  ubuntu: [ros-jazzy-nav2-recoveries]
+robot_localization:
+  ubuntu: [ros-jazzy-robot-localization]
+slam_toolbox:
+  ubuntu: [ros-jazzy-slam-toolbox]
+nav2_amcl:
+  ubuntu: [ros-jazzy-nav2-amcl]
+image_proc:
+  ubuntu: [ros-jazzy-image-proc]
+diagnostic_msgs:
+  ubuntu: [ros-jazzy-diagnostic-msgs]
+
+# Python & launch
+launch:
+  ubuntu: [ros-jazzy-launch]
+launch_ros:
+  ubuntu: [ros-jazzy-launch-ros]
+python3-pytest:
+  ubuntu: [python3-pytest]
+ament_flake8:
+  ubuntu: [ros-jazzy-ament-flake8]
+ament_copyright:
+  ubuntu: [ros-jazzy-ament-copyright]
+ament_lint_common:
+  ubuntu: [ros-jazzy-ament-lint-common]
