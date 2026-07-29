@@ -45,6 +45,7 @@ jobs:
         run: |
           . /opt/ros/jazzy/setup.sh
           rosdep update || true
+          cd ros2_ws
           rosdep install --from-paths src --ignore-src -r -y
 
       - name: Build
