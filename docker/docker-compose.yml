@@ -1,0 +1,81 @@
+# docker/docker-compose.yml
+# Brings up simulation, RViz, and optional Nav2 in isolated containers.
+#
+# Usage:
+#   docker compose -f docker/docker-compose.yml up sim          # Gazebo + EKF + SLAM (mapping mode)
+#   docker compose -f docker/docker-compose.yml up sim_nav     # Gazebo + EKF + AMCL + Nav2
+#   docker compose -f docker/docker-compose.yml up rviz         # RViz connected to sim
+#   docker compose -f docker/docker-compose.yml up teleop       # Keyboard teleop
+
+services:
+  sim:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: amr-ws:jazzy
+    container_name: amr_sim
+    environment:
+      - DISPLAY=${DISPLAY:-:0}
+      - XAUTHORITY=/tmp/.docker.xauth
+      - QT_X11_NO_MITSHM=1
+      - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+      - GZ_SIM_RESOURCE_PATH=/ros2_ws/install/amr_simulation/share/amr_simulation
+      - AMR_GZ_HEADLESS=${AMR_GZ_HEADLESS:-false}
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - ${XAUTHORITY:-/tmp/.docker.xauth}:/tmp/.docker.xauth:rw
+      - ../src:/ros2_ws/src:ro
+    devices:
+      - /dev/dri:/dev/dri
+    group_add:
+      - video
+    network_mode: host
+    ipc: host
+    command: >
+      ros2 launch amr_bringup system.launch.py
+        use_sim_time:=true
+        world:=/ros2_ws/src/amr_simulation/worlds/empty_world.sdf
+        headless:=${AMR_GZ_HEADLESS:-false}
+    stdin_open: true
+    tty: true
+    restart: "no"
+
+  rviz:
+    image: amr-ws:jazzy
+    container_name: amr_rviz
+    environment:
+      - DISPLAY=${DISPLAY:-:0}
+      - XAUTHORITY=/tmp/.docker.xauth
+      - QT_X11_NO_MITSHM=1
+      - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - ${XAUTHORITY:-/tmp/.docker.xauth}:/tmp/.docker.xauth:rw
+      - ../src:/ros2_ws/src:ro
+    devices:
+      - /dev/dri:/dev/dri
+    group_add:
+      - video
+    network_mode: host
+    ipc: host
+    command: >
+      ros2 run rviz2 rviz2
+        -d /ros2_ws/src/amr_bringup/rviz/amr_navigation.rviz
+        --ros-args -p use_sim_time:=true
+    stdin_open: true
+    tty: true
+    restart: "no"
+
+  teleop:
+    image: amr-ws:jazzy
+    container_name: amr_teleop
+    environment:
+      - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+    network_mode: host
+    ipc: host
+    stdin_open: true
+    tty: true
+    restart: "no"
+    command: >
+      ros2 run teleop_twist_keyboard teleop_twist_keyboard
+        --ros-args -p stamped:=false -r cmd_vel:=/cmd_vel
