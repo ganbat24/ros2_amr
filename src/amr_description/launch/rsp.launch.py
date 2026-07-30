@@ -11,9 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Launch file for the robot state publisher node."""
+
 import os
 
 import xacro
+
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
 from launch_ros.actions import Node
@@ -21,6 +24,7 @@ from launch_ros.substitutions import FindPackageShare
 
 
 def generate_launch_description():
+    """Generate the launch description for the robot state publisher."""
     robot_description_pkg = FindPackageShare("amr_description").find("amr_description")
     default_model_path = os.path.join(robot_description_pkg, "urdf", "amr.urdf.xacro")
 

@@ -11,9 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Launch file for RViz visualization of the AMR."""
+
 import os
 
 import xacro
+
 from launch import LaunchDescription
 from launch.actions import IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
@@ -22,14 +25,16 @@ from launch_ros.substitutions import FindPackageShare
 
 
 def generate_launch_description():
+    """Generate the launch description for RViz visualization."""
     amr_description_pkg = FindPackageShare("amr_description").find("amr_description")
 
     xacro_file = os.path.join(amr_description_pkg, "urdf", "amr.urdf.xacro")
     robot_description_config = xacro.process_file(xacro_file)
     robot_description = {"robot_description": robot_description_config.toxml()}
 
+    rsp_launch_path = os.path.join(amr_description_pkg, "launch", "rsp.launch.py")
     rsp_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(os.path.join(amr_description_pkg, "launch", "rsp.launch.py")),
+        PythonLaunchDescriptionSource(rsp_launch_path),
         launch_arguments={"robot_description": xacro_file}.items(),
     )
 
