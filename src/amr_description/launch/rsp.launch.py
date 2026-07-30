@@ -43,9 +43,9 @@ def generate_launch_description():
         output='screen',
     )
 
-    joint_state_publisher_gui_node = Node(
-        package='joint_state_publisher_gui',
-        executable='joint_state_publisher_gui',
+    joint_state_publisher_node = Node(
+        package='joint_state_publisher',
+        executable='joint_state_publisher',
         parameters=[robot_description],
         output='screen',
     )
@@ -59,6 +59,6 @@ def generate_launch_description():
                 'file',
             ),
             robot_state_publisher_node,
-            joint_state_publisher_gui_node,
+            joint_state_publisher_node,
         ]
     )
