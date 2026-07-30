@@ -1,9 +1,9 @@
-name: AMR Base Stack CI
+name: CI
 
 on: [push, pull_request]
 
 jobs:
-  build-and-lint:
+  ci:
     runs-on: ubuntu-24.04
     container:
       image: ros:jazzy-ros-base-noble
@@ -20,12 +20,12 @@ jobs:
           restore-keys: |
             rosdep-${{ runner.os }}-jazzy-
 
-
       - name: Install system dependencies
         run: |
           set -e
           apt-get update
           apt-get install -y \
+            ccache \
             curl \
             gnupg \
             lsb-release \
@@ -39,6 +39,11 @@ jobs:
             ros-jazzy-ros-gz \
             ros-jazzy-gz-ros2-control
 
+      - name: Configure ccache
+        run: |
+          ccache --max-size=1G
+          echo "CCACHE_DIR=$HOME/.ccache" >> "$GITHUB_ENV"
+
       - name: rosdep install
         run: |
           . /opt/ros/jazzy/setup.sh
@@ -50,18 +55,21 @@ jobs:
           . /opt/ros/jazzy/setup.sh
           colcon build \
             --symlink-install \
-            --cmake-args -DCMAKE_BUILD_TYPE=Release \
+            --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
             --event-handlers console_cohesion+
 
-      - name: Lint Python (flake8)
-        run: |
-          . /opt/ros/jazzy/setup.sh
-          python3 -m flake8 src/
-
-      - name: Test
+      - name: Lint (fast fail)
         run: |
           . /opt/ros/jazzy/setup.sh
           colcon test \
+            --ctest-args -R lint_ \
+            --event-handlers console_cohesion+
+
+      - name: Test (runtime only)
+        run: |
+          . /opt/ros/jazzy/setup.sh
+          colcon test \
+            --ctest-args -E lint_ \
             --event-handlers console_cohesion+
 
       - name: Test results
