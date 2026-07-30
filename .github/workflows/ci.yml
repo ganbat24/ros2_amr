@@ -11,8 +11,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-        with:
-          path: ros2_ws
 
       - name: Cache rosdep
         uses: actions/cache@v5
@@ -45,12 +43,10 @@ jobs:
         run: |
           . /opt/ros/jazzy/setup.sh
           rosdep update || true
-          cd ros2_ws
           rosdep install --from-paths src --ignore-src -r -y
 
       - name: Build
         run: |
-          cd ros2_ws
           . /opt/ros/jazzy/setup.sh
           colcon build \
             --symlink-install \
@@ -59,13 +55,11 @@ jobs:
 
       - name: Lint Python (flake8)
         run: |
-          cd ros2_ws
           . /opt/ros/jazzy/setup.sh
           python3 -m flake8 src/
 
       - name: Test
         run: |
-          cd ros2_ws
           . /opt/ros/jazzy/setup.sh
           colcon test \
             --event-handlers console_cohesion+
@@ -73,7 +67,6 @@ jobs:
       - name: Test results
         if: always()
         run: |
-          cd ros2_ws
           . /opt/ros/jazzy/setup.sh
           if [ -d build ]; then colcon test-result --verbose; else echo "No build directory found - skipping test results"; fi
 
@@ -83,5 +76,5 @@ jobs:
         with:
           name: colcon-test-results
           path: |
-            ros2_ws/build/**/test_results/**
-            ros2_ws/log/**/**
+            build/**/test_results/**
+            log/**/**
