@@ -1,0 +1,46 @@
+<?xml version="1.0"?>
+<robot name="amr" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:include filename="$(find amr_description)/urdf/includes/properties.xacro"/>
+  <xacro:include filename="$(find amr_description)/urdf/includes/materials.xacro"/>
+  <xacro:include filename="$(find amr_description)/urdf/includes/chassis.xacro"/>
+  <xacro:include filename="$(find amr_description)/urdf/includes/wheels.xacro"/>
+  <xacro:include filename="$(find amr_description)/urdf/includes/casters.xacro"/>
+  <xacro:include filename="$(find amr_description)/urdf/includes/sensors.xacro"/>
+  <xacro:include filename="$(find amr_description)/urdf/includes/transmissions.xacro"/>
+  <xacro:include filename="$(find amr_description)/urdf/includes/gazebo.xacro"/>
+
+  <!-- ============================================================
+       Base footprint
+       ============================================================ -->
+  <link name="base_footprint"/>
+  <joint name="base_footprint_joint" type="fixed">
+    <parent link="base_footprint"/>
+    <child link="base_link"/>
+  </joint>
+
+  <!-- ============================================================
+       Chassis
+       ============================================================ -->
+  <xacro:chassis name="base_link"/>
+
+  <!-- ============================================================
+       Drive wheels
+       ============================================================ -->
+  <xacro:drive_wheel side="left" reflect="1"/>
+  <xacro:drive_wheel side="right" reflect="-1"/>
+
+  <!-- ============================================================
+       Caster wheels
+       ============================================================ -->
+  <xacro:caster position="front" x_offset="${caster_front_x_offset}"/>
+  <xacro:caster position="rear"  x_offset="${caster_rear_x_offset}"/>
+
+  <!-- ============================================================
+       Sensors
+       ============================================================ -->
+  <xacro:imu_sensor name="imu" parent="base_link"/>
+  <xacro:lidar_sensor name="laser" parent="base_link"/>
+  <xacro:camera_sensor name="camera" parent="base_link"/>
+
+</robot>

@@ -1,0 +1,111 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:macro name="imu_sensor" params="name parent">
+    <joint name="${name}_joint" type="fixed">
+      <parent link="${parent}"/>
+      <child link="${name}_link"/>
+      <origin xyz="${imu_x_offset} ${imu_y_offset} ${imu_z_offset}" rpy="0 0 0"/>
+    </joint>
+    <link name="${name}_link">
+      <collision>
+        <geometry>
+          <box size="0.01 0.01 0.01"/>
+        </geometry>
+      </collision>
+    </link>
+  </xacro:macro>
+
+  <xacro:macro name="lidar_sensor" params="name parent">
+    <joint name="${name}_stand_joint" type="fixed">
+      <parent link="${parent}"/>
+      <child link="${name}_stand_link"/>
+      <origin xyz="${laser_x_offset} ${laser_y_offset} ${laser_z_offset}" rpy="0 0 0"/>
+    </joint>
+    <link name="${name}_stand_link">
+      <visual>
+        <geometry>
+          <box size="${laser_stand_width} ${laser_stand_width} ${laser_stand_height}"/>
+        </geometry>
+        <material name="lidar"/>
+      </visual>
+      <collision>
+        <geometry>
+          <box size="${laser_stand_width} ${laser_stand_width} ${laser_stand_height}"/>
+        </geometry>
+      </collision>
+    </link>
+    <joint name="${name}_joint" type="fixed">
+      <parent link="${name}_stand_link"/>
+      <child link="${name}_frame"/>
+      <origin xyz="0 0 ${laser_stand_height/2 + lidar_length/2}" rpy="0 0 0"/>
+    </joint>
+    <link name="${name}_frame">
+      <visual>
+        <geometry>
+          <cylinder radius="${lidar_radius}" length="${lidar_length}"/>
+        </geometry>
+        <material name="lidar"/>
+      </visual>
+      <collision>
+        <geometry>
+          <cylinder radius="${lidar_radius}" length="${lidar_length}"/>
+        </geometry>
+      </collision>
+    </link>
+    <joint name="${name}_lens_joint" type="fixed">
+      <parent link="${name}_frame"/>
+      <child link="${name}_lens_link"/>
+      <origin xyz="0 0 ${lidar_length/2 + 0.005/2}" rpy="0 0 0"/>
+    </joint>
+    <link name="${name}_lens_link">
+      <visual>
+        <geometry>
+          <cylinder radius="${lidar_radius - 0.002}" length="0.005"/>
+        </geometry>
+        <material name="lidar_lens"/>
+      </visual>
+    </link>
+  </xacro:macro>
+
+  <xacro:macro name="camera_sensor" params="name parent">
+    <joint name="${name}_joint" type="fixed">
+      <parent link="${parent}"/>
+      <child link="${name}_link"/>
+      <origin xyz="${camera_x_offset} ${camera_y_offset} ${camera_z_offset}" rpy="0 0 0"/>
+    </joint>
+    <link name="${name}_link">
+      <visual>
+        <geometry>
+          <box size="0.025 0.020 0.015"/>
+        </geometry>
+        <material name="camera"/>
+      </visual>
+      <collision>
+        <geometry>
+          <box size="0.025 0.020 0.015"/>
+        </geometry>
+      </collision>
+    </link>
+    <joint name="${name}_lens_joint" type="fixed">
+      <parent link="${name}_link"/>
+      <child link="${name}_lens_link"/>
+      <origin xyz="0.014 0 0" rpy="0 1.5708 0"/>
+    </joint>
+    <link name="${name}_lens_link">
+      <visual>
+        <geometry>
+          <cylinder radius="0.006" length="0.004"/>
+        </geometry>
+        <material name="camera_lens"/>
+      </visual>
+    </link>
+    <joint name="${name}_optical_joint" type="fixed">
+      <parent link="${name}_link"/>
+      <child link="${name}_optical_frame"/>
+      <origin xyz="0 0 0" rpy="-1.5708 0 -1.5708"/>
+    </joint>
+    <link name="${name}_optical_frame"/>
+  </xacro:macro>
+
+</robot>

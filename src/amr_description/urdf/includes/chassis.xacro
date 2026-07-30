@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:macro name="chassis" params="name">
+    <link name="${name}">
+      <inertial>
+        <mass value="${chassis_mass}"/>
+        <inertia
+          ixx="${(chassis_mass/12) * (chassis_height**2 + chassis_width**2)}"
+          ixy="0.0" ixz="0.0"
+          iyy="${(chassis_mass/12) * (chassis_length**2 + chassis_height**2)}"
+          iyz="0.0"
+          izz="${(chassis_mass/12) * (chassis_length**2 + chassis_width**2)}"/>
+      </inertial>
+      <visual>
+        <geometry>
+          <box size="${chassis_length} ${chassis_width} ${chassis_height}"/>
+        </geometry>
+        <material name="chassis_color"/>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+      </visual>
+      <collision>
+        <geometry>
+          <box size="${chassis_length} ${chassis_width} ${chassis_height}"/>
+        </geometry>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+      </collision>
+    </link>
+  </xacro:macro>
+
+</robot>

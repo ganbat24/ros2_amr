@@ -1,0 +1,60 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- ============================================================
+       Chassis
+       ============================================================ -->
+  <xacro:property name="chassis_length" value="0.28"/>
+  <xacro:property name="chassis_width" value="0.22"/>
+  <xacro:property name="chassis_height" value="0.04"/>
+  <xacro:property name="chassis_mass" value="5.0"/>
+  <xacro:property name="chassis_z_offset" value="0.0"/>
+
+  <!-- ============================================================
+       Drive wheels — placed at left/right sides, axis Y
+       ============================================================ -->
+  <xacro:property name="wheel_radius" value="0.033"/>
+  <xacro:property name="wheel_length" value="0.02"/>
+  <xacro:property name="wheel_mass" value="0.5"/>
+  <xacro:property name="wheel_y_offset" value="0.13"/>
+  <xacro:property name="wheel_z_offset" value="-0.04"/>
+  <xacro:property name="wheel_effort" value="100"/>
+  <xacro:property name="wheel_velocity" value="10"/>
+
+  <!-- ============================================================
+       Caster wheels — placed at front/rear on center line
+       z is computed so caster bottom = wheel bottom
+       ============================================================ -->
+  <xacro:property name="caster_radius" value="0.02"/>
+  <xacro:property name="caster_mass" value="0.2"/>
+  <xacro:property name="caster_y_offset" value="0.0"/>
+  <xacro:property name="caster_z_offset" value="${wheel_z_offset - wheel_radius + caster_radius}"/>
+  <xacro:property name="caster_front_x_offset" value="0.12"/>
+  <xacro:property name="caster_rear_x_offset" value="-0.12"/>
+
+  <!-- ============================================================
+       IMU sensor — center of chassis
+       ============================================================ -->
+  <xacro:property name="imu_x_offset" value="0.0"/>
+  <xacro:property name="imu_y_offset" value="0.0"/>
+  <xacro:property name="imu_z_offset" value="0.04"/>
+
+  <!-- ============================================================
+       2D LiDAR sensor — centered on top deck
+       ============================================================ -->
+  <xacro:property name="laser_stand_height" value="0.015"/>
+  <xacro:property name="laser_stand_width" value="0.055"/>
+  <xacro:property name="laser_x_offset" value="0.0"/>
+  <xacro:property name="laser_y_offset" value="0.0"/>
+  <xacro:property name="laser_z_offset" value="${chassis_height/2 + laser_stand_height/2}"/>
+  <xacro:property name="lidar_radius" value="0.025"/>
+  <xacro:property name="lidar_length" value="0.015"/>
+
+  <!-- ============================================================
+       RGB Camera sensor — forward-facing on top deck
+       ============================================================ -->
+  <xacro:property name="camera_x_offset" value="0.1275"/>
+  <xacro:property name="camera_y_offset" value="0.0"/>
+  <xacro:property name="camera_z_offset" value="${chassis_height/2 + 0.015/2}"/>
+
+</robot>

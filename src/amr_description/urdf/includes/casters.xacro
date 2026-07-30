@@ -1,0 +1,34 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:macro name="caster" params="position x_offset">
+    <joint name="caster_${position}_joint" type="fixed">
+      <parent link="base_link"/>
+      <child link="caster_${position}_link"/>
+      <origin xyz="${x_offset} ${caster_y_offset} ${caster_z_offset}" rpy="0 0 0"/>
+    </joint>
+    <link name="caster_${position}_link">
+      <inertial>
+        <mass value="${caster_mass}"/>
+        <inertia
+          ixx="${0.4 * caster_mass * caster_radius**2}"
+          ixy="0.0" ixz="0.0"
+          iyy="${0.4 * caster_mass * caster_radius**2}"
+          iyz="0.0"
+          izz="${0.4 * caster_mass * caster_radius**2}"/>
+      </inertial>
+      <visual>
+        <geometry>
+          <sphere radius="${caster_radius}"/>
+        </geometry>
+        <material name="caster_color"/>
+      </visual>
+      <collision>
+        <geometry>
+          <sphere radius="${caster_radius}"/>
+        </geometry>
+      </collision>
+    </link>
+  </xacro:macro>
+
+</robot>
