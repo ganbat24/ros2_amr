@@ -22,6 +22,22 @@ jobs:
           restore-keys: |
             rosdep-${{ runner.os }}-jazzy-
 
+      - name: Cache colcon
+        uses: actions/cache@v5
+        with:
+          path: ~/.colcon
+          key: colcon-${{ runner.os }}-jazzy-${{ hashFiles('src/**/CMakeLists.txt') }}
+          restore-keys: |
+            colcon-${{ runner.os }}-jazzy-
+
+      - name: Cache ccache
+        uses: actions/cache@v5
+        with:
+          path: ~/.ccache
+          key: ccache-${{ runner.os }}-jazzy-${{ github.sha }}
+          restore-keys: |
+            ccache-${{ runner.os }}-jazzy-
+
       - name: Install system dependencies
         run: |
           set -e
