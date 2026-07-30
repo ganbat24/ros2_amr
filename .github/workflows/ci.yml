@@ -11,6 +11,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          fetch-depth: ${{ github.event_name == 'pull_request' && 0 || 1 }}
 
       - name: Cache rosdep
         uses: actions/cache@v5
@@ -44,6 +46,18 @@ jobs:
           ccache --max-size=1G
           echo "CCACHE_DIR=$HOME/.ccache" >> "$GITHUB_ENV"
 
+      - name: Detect changed packages
+        id: changed-packages
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            packages=$(git diff --name-only origin/${{ github.base_ref }}...HEAD \
+              | grep '^src/[^/]*/' \
+              | sed 's|^src/\([^/]*\)/.*|\1|' \
+              | sort -u \
+              | tr '\n' ' ')
+            echo "packages=$packages" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: rosdep install
         run: |
           . /opt/ros/jazzy/setup.sh
@@ -53,24 +67,50 @@ jobs:
       - name: Build
         run: |
           . /opt/ros/jazzy/setup.sh
-          colcon build \
-            --symlink-install \
-            --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
-            --event-handlers console_cohesion+
+          cmake_args="-DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER_LAUNCHER=ccache"
+          packages="${{ steps.changed-packages.outputs.packages }}"
+          if [ -n "$packages" ]; then
+            colcon build \
+              --packages-above-and-up-to $packages \
+              --symlink-install \
+              --cmake-args $cmake_args \
+              --event-handlers console_cohesion+
+          else
+            colcon build \
+              --symlink-install \
+              --cmake-args $cmake_args \
+              --event-handlers console_cohesion+
+          fi
 
       - name: Lint (fast fail)
         run: |
           . /opt/ros/jazzy/setup.sh
-          colcon test \
-            --ctest-args -R lint_ \
-            --event-handlers console_cohesion+
+          packages="${{ steps.changed-packages.outputs.packages }}"
+          if [ -n "$packages" ]; then
+            colcon test \
+              --packages-select $packages \
+              --ctest-args -R lint_ \
+              --event-handlers console_cohesion+
+          else
+            colcon test \
+              --ctest-args -R lint_ \
+              --event-handlers console_cohesion+
+          fi
 
       - name: Test (runtime only)
         run: |
           . /opt/ros/jazzy/setup.sh
-          colcon test \
-            --ctest-args -E lint_ \
-            --event-handlers console_cohesion+
+          packages="${{ steps.changed-packages.outputs.packages }}"
+          if [ -n "$packages" ]; then
+            colcon test \
+              --packages-select $packages \
+              --ctest-args -E lint_ \
+              --event-handlers console_cohesion+
+          else
+            colcon test \
+              --ctest-args -E lint_ \
+              --event-handlers console_cohesion+
+          fi
 
       - name: Test results
         if: always()
