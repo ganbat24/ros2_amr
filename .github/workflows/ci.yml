@@ -12,7 +12,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with:
-          path: ros2_ws/src
+          path: ros2_ws
 
       - name: Cache rosdep
         uses: actions/cache@v5
