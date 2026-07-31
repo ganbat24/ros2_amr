@@ -20,6 +20,11 @@ if(BUILD_TESTING)
     TIMEOUT 30
     PYTHON_EXECUTABLE python3
   )
+
+  add_launch_test(test/test_integration_gazebo.py
+    TIMEOUT 60
+    PYTHON_EXECUTABLE python3
+  )
 endif()
 
 ament_package()
