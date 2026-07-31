@@ -20,11 +20,6 @@ import unittest
 
 from ament_index_python.packages import get_package_share_directory
 
-import rclpy
-from rclpy.executors import SingleThreadedExecutor
-from rclpy.node import Node as RclpyNode
-from rclpy.qos import QoSDurabilityPolicy, QoSProfile, QoSReliabilityPolicy
-
 from launch import LaunchDescription
 from launch.actions import IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
@@ -34,17 +29,15 @@ from launch_ros.substitutions import FindPackageShare
 import launch_testing
 import launch_testing.actions
 
+import rclpy
+from rclpy.executors import SingleThreadedExecutor
+from rclpy.node import Node as RclpyNode
+
 from sensor_msgs.msg import JointState
 
-from tf2_msgs.msg import TFMessage
+import tf2_ros
 
 import xacro
-
-STATIC_TF_QOS = QoSProfile(
-    depth=10,
-    durability=QoSDurabilityPolicy.TRANSIENT_LOCAL,
-    reliability=QoSReliabilityPolicy.RELIABLE,
-)
 
 
 def generate_test_description():
@@ -85,46 +78,30 @@ class TestAmrDescriptionLaunch(unittest.TestCase):
         rclpy.shutdown(context=ctx)
 
     def test_topics_and_rate(self):
-        """Test /joint_states and /tf_static exist, rate >= 0.5 Hz."""
-        node, executor, ctx = self._make_node('test_combined_node')
+        """Test /joint_states exists and publishes at >= 0.5 Hz."""
+        node, executor, ctx = self._make_node('test_rate_node')
         executor.add_node(node)
 
         joint_timestamps = []
-        tf_static_child_frames = set()
-        tf_static_parent_map = {}
 
         def joint_callback(msg):
             joint_timestamps.append(
                 msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
             )
 
-        def tf_static_callback(msg):
-            for transform in msg.transforms:
-                tf_static_child_frames.add(transform.child_frame_id)
-                tf_static_parent_map[transform.child_frame_id] = (
-                    transform.header.frame_id
-                )
-
-        sub_joint = node.create_subscription(
+        sub = node.create_subscription(
             JointState, '/joint_states', joint_callback, 10
-        )
-        sub_tf = node.create_subscription(
-            TFMessage, '/tf_static', tf_static_callback, STATIC_TF_QOS
         )
 
         start = time.time()
         while time.time() - start < 5.0:
             executor.spin_once(timeout_sec=0.1)
 
-        node.destroy_subscription(sub_joint)
-        node.destroy_subscription(sub_tf)
+        node.destroy_subscription(sub)
         self._shutdown_node(node, executor, ctx)
 
         self.assertGreater(
             len(joint_timestamps), 0, '/joint_states not received'
-        )
-        self.assertGreater(
-            len(tf_static_child_frames), 0, '/tf_static not received'
         )
 
         if len(joint_timestamps) >= 2:
@@ -135,26 +112,35 @@ class TestAmrDescriptionLaunch(unittest.TestCase):
                     rate, 0.5, f'Joint states rate {rate:.1f} Hz < 0.5 Hz'
                 )
 
-        expected_children = {
-            'base_link',
-            'camera_link',
-            'imu_link',
-            'laser_frame',
-            'laser_stand_link',
-            'caster_front_link',
-            'caster_rear_link',
-        }
-        missing = expected_children - tf_static_child_frames
-        self.assertEqual(
-            missing, set(), f'Missing frames in /tf_static: {missing}'
-        )
+    def test_tf_tree(self):
+        """Test TF tree has expected frames and correct topology."""
+        node, executor, ctx = self._make_node('test_tf_node')
+        executor.add_node(node)
 
-        self.assertIn('base_link', tf_static_parent_map)
-        self.assertEqual(
-            tf_static_parent_map['base_link'],
-            'base_footprint',
-            'base_link parent should be base_footprint',
-        )
+        tf_buffer = tf2_ros.Buffer()
+        _listener = tf2_ros.TransformListener(tf_buffer, node)  # noqa: F841
+
+        expected_transforms = [
+            ('base_footprint', 'base_link'),
+            ('base_link', 'camera_link'),
+            ('base_link', 'imu_link'),
+            ('base_link', 'laser_frame'),
+            ('base_link', 'laser_stand_link'),
+            ('base_link', 'caster_front_link'),
+            ('base_link', 'caster_rear_link'),
+        ]
+
+        start = time.time()
+        while time.time() - start < 5.0:
+            executor.spin_once(timeout_sec=0.1)
+
+        self._shutdown_node(node, executor, ctx)
+
+        for parent, child in expected_transforms:
+            self.assertTrue(
+                tf_buffer.can_transform(parent, child, rclpy.time.Time()),
+                f'Missing transform: {parent} -> {child}',
+            )
 
 
 class TestUrdfValidation(unittest.TestCase):

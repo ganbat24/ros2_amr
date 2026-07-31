@@ -10,20 +10,13 @@
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
-# limitations under the limitations under the limitations under the
-# limitations.
-"""Integration tests for amr_description with Gazebo simulation (headless)."""
+# limitations under the License.
+"""Integration tests for amr_description with Gazebo simulation."""
 
 import os
 import shutil
 import time
 import unittest
-
-import rclpy
-from rclpy.executors import SingleThreadedExecutor
-from rclpy.qos import QoSDurabilityPolicy, QoSProfile, QoSReliabilityPolicy
-
-from ament_index_python.packages import get_package_share_directory
 
 from launch import LaunchDescription
 from launch.actions import ExecuteProcess, IncludeLaunchDescription
@@ -34,13 +27,10 @@ from launch_ros.substitutions import FindPackageShare
 import launch_testing
 import launch_testing.actions
 
-from tf2_msgs.msg import TFMessage
+import rclpy
+from rclpy.executors import SingleThreadedExecutor
 
-STATIC_TF_QOS = QoSProfile(
-    depth=10,
-    durability=QoSDurabilityPolicy.TRANSIENT_LOCAL,
-    reliability=QoSReliabilityPolicy.RELIABLE,
-)
+import tf2_ros
 
 
 def generate_test_description():
@@ -48,7 +38,9 @@ def generate_test_description():
     amr_description_pkg = FindPackageShare('amr_description').find(
         'amr_description'
     )
-    amr_simulation_pkg = get_package_share_directory('amr_simulation')
+    amr_simulation_pkg = FindPackageShare('amr_simulation').find(
+        'amr_simulation'
+    )
 
     rsp_launch_path = os.path.join(
         amr_description_pkg, 'launch', 'rsp.launch.py'
@@ -96,54 +88,40 @@ def generate_test_description():
     )
 
 
-_has_gz = shutil.which('gz') is not None
-try:
-    get_package_share_directory('amr_simulation')
-    _has_sim_pkg = True
-except Exception:
-    _has_sim_pkg = False
-
-
 @unittest.skipUnless(
-    _has_gz and _has_sim_pkg,
-    'Gazebo (gz) or amr_simulation package not available',
+    shutil.which('gz') is not None,
+    'Gazebo (gz) not available in PATH',
 )
 class TestRspGazeboIntegration(unittest.TestCase):
-    """Integration tests for rsp + gazebo (headless)."""
+    """Integration tests for rsp + gazebo."""
 
-    def test_tf_static_exists(self):
-        """Test that /tf_static is published with Gazebo running."""
+    def test_tf_tree(self):
+        """Test TF tree has expected frames with Gazebo running."""
         ctx = rclpy.Context()
         rclpy.init(context=ctx)
         node = rclpy.create_node('test_gazebo_tf', context=ctx)
         executor = SingleThreadedExecutor(context=ctx)
         executor.add_node(node)
 
-        child_frames = set()
+        tf_buffer = tf2_ros.Buffer()
+        _listener = tf2_ros.TransformListener(tf_buffer, node)  # noqa: F841
 
-        def callback(msg):
-            for transform in msg.transforms:
-                child_frames.add(transform.child_frame_id)
-
-        sub = node.create_subscription(
-            TFMessage, '/tf_static', callback, STATIC_TF_QOS
-        )
+        expected_transforms = [
+            ('base_footprint', 'base_link'),
+            ('base_link', 'imu_link'),
+            ('base_link', 'laser_frame'),
+            ('base_link', 'camera_link'),
+        ]
 
         start = time.time()
         while time.time() - start < 10.0:
             executor.spin_once(timeout_sec=0.1)
 
-        node.destroy_subscription(sub)
         node.destroy_node()
         rclpy.shutdown(context=ctx)
 
-        expected_frames = {
-            'base_link',
-            'imu_link',
-            'laser_frame',
-            'camera_link',
-        }
-        missing = expected_frames - child_frames
-        self.assertEqual(
-            missing, set(), f'Missing frames in /tf_static: {missing}'
-        )
+        for parent, child in expected_transforms:
+            self.assertTrue(
+                tf_buffer.can_transform(parent, child, rclpy.time.Time()),
+                f'Missing transform: {parent} -> {child}',
+            )
