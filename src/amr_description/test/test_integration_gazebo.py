@@ -96,8 +96,17 @@ def generate_test_description():
     )
 
 
+_has_gz = shutil.which('gz') is not None
+try:
+    get_package_share_directory('amr_simulation')
+    _has_sim_pkg = True
+except Exception:
+    _has_sim_pkg = False
+
+
 @unittest.skipUnless(
-    shutil.which('gz') is not None, 'Gazebo (gz) not available in PATH'
+    _has_gz and _has_sim_pkg,
+    'Gazebo (gz) or amr_simulation package not available',
 )
 class TestRspGazeboIntegration(unittest.TestCase):
     """Integration tests for rsp + gazebo (headless)."""
