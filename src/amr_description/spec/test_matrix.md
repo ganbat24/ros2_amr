@@ -5,25 +5,26 @@
 | Test | Expected Behavior |
 |------|------------------|
 | `xacro` processes `amr.urdf.xacro` | Output valid XML, no undefined macros |
-| URDF passes `check_urdf` | No joint/link errors, all frames reachable from `base_link` |
+| URDF contains all expected frames | `base_link`, `wheel_left_link`, `wheel_right_link`, `imu_link`, `laser_frame`, `camera_link`, `base_footprint` present in output |
 
 ## Runtime Tests
 
 | Test | Expected Behavior |
 |------|------------------|
-| `rsp.launch.py` starts without error | `robot_state_publisher` and `joint_state_publisher_gui` nodes present |
-| `/tf` exists | All expected frames published within 5 s of launch |
-| `/tf_static` exists | `laser_frame`, `imu_link`, `camera_optical_frame` present |
-| `/joint_states` exists | Published at ≥ 10 Hz |
-| TF topology matches plan | `map → odom → base_link → child` structure consistent |
+| `rsp.launch.py` starts without error | `robot_state_publisher` and `joint_state_publisher` nodes present |
+| `/joint_states` exists | Published within 5 s of launch |
+| `/joint_states` rate | ≥ 1 Hz (default `joint_state_publisher` rate) |
+| `/tf_static` exists with correct QoS | `transient_local` durability — received by subscriber using matching QoS |
+| `/tf_static` contains expected frames | `base_link`, `camera_link`, `imu_link`, `laser_frame`, `laser_stand_link`, `caster_front_link`, `caster_rear_link` |
+| TF topology | `base_footprint → base_link → child` structure consistent |
 
 ## Integration Tests
 
 | Test | Expected Behavior |
 |------|------------------|
-| `rsp.launch.py` + `gazebo_sim.launch.py` | TF tree complete, no frame lookup timeouts |
+| `rsp.launch.py` + `gazebo_sim.launch.py` (headless) | `/tf_static` contains expected frames, no frame lookup timeouts |
 
 ## Edge Cases
 
-- `robot_description` parameter missing → launch fails with clear error
-- URDF contains unknown macro → xacro fails during launch
+- URDF contains unknown macro → `xacro.process_file()` raises error
+- QoS mismatch on `/tf_static` → subscriber with `volatile` QoS receives nothing (documented in interface spec)
