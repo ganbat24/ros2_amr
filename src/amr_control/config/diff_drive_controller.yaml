@@ -1,0 +1,13 @@
+diff_drive_controller:
+  ros__parameters:
+    left_wheel_names: ["wheel_left_joint"]
+    right_wheel_names: ["wheel_right_joint"]
+    wheel_separation: 0.3
+    wheel_radius: 0.033
+    cmd_vel_topic: /cmd_vel
+    odom_frame_id: odom
+    base_frame_id: base_link
+    publish_rate: 50.0
+    enable_odom_tf: false
+    pose_covariance_diagonal: [0.001, 0.001, 0.001, 0.001, 0.001, 0.01]
+    twist_covariance_diagonal: [0.001, 0.001, 0.001, 0.001, 0.001, 0.01]
