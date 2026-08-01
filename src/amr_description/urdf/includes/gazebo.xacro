@@ -12,8 +12,8 @@
   </gazebo>
 
   <gazebo reference="laser_frame">
-    <sensor type="ray" name="laser">
-      <ray>
+    <sensor type="gpu_lidar" name="laser">
+      <lidar>
         <scan>
           <horizontal>
             <samples>360</samples>
@@ -32,7 +32,7 @@
           <mean>0.0</mean>
           <stddev>0.01</stddev>
         </noise>
-      </ray>
+      </lidar>
       <always_on>true</always_on>
       <update_rate>10.0</update_rate>
     </sensor>
