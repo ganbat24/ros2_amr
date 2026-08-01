@@ -17,6 +17,8 @@ import os
 
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
+from launch.conditions import IfCondition
+from launch.substitutions import LaunchConfiguration
 
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
@@ -48,6 +50,9 @@ def generate_launch_description():
         executable='joint_state_publisher',
         parameters=[robot_description],
         output='screen',
+        condition=IfCondition(
+            LaunchConfiguration('use_joint_state_publisher')
+        ),
     )
 
     return LaunchDescription(
@@ -57,6 +62,12 @@ def generate_launch_description():
                 default_value=default_model_path,
                 description='Absolute path to the robot description xacro '
                 'file',
+            ),
+            DeclareLaunchArgument(
+                name='use_joint_state_publisher',
+                default_value='true',
+                description='Launch joint_state_publisher (set to false '
+                'when Gazebo or ros2_control provides /joint_states)',
             ),
             robot_state_publisher_node,
             joint_state_publisher_node,

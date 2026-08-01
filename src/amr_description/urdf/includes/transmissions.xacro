@@ -3,7 +3,7 @@
 
   <ros2_control name="diff_drive" type="system">
     <hardware>
-      <plugin>gz_ros2_control/GazeboSystem</plugin>
+      <plugin>gz_ros2_control/GazeboSimSystem</plugin>
     </hardware>
     <joint name="wheel_left_joint">
       <command_interface name="velocity"/>
@@ -16,19 +16,5 @@
       <state_interface name="velocity"/>
     </joint>
   </ros2_control>
-
-  <transmission name="wheel_left_trans">
-    <type>transmission_interface/SimpleTransmission</type>
-    <joint>wheel_left_joint</joint>
-    <actuator name="wheel_left_actuator"/>
-    <mechanicalReduction>1</mechanicalReduction>
-  </transmission>
-
-  <transmission name="wheel_right_trans">
-    <type>transmission_interface/SimpleTransmission</type>
-    <joint>wheel_right_joint</joint>
-    <actuator name="wheel_right_actuator"/>
-    <mechanicalReduction>1</mechanicalReduction>
-  </transmission>
 
 </robot>
