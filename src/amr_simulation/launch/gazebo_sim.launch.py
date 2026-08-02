@@ -35,6 +35,16 @@ def generate_launch_description():
     default_world_path = os.path.join(
         amr_simulation_pkg, 'worlds', 'empty_world.sdf'
     )
+    default_gui_config = os.path.join(
+        amr_simulation_pkg, 'gazebo', 'gui_no_quickstart.config'
+    )
+
+    # Build gz_args with resolved paths (available at parse time)
+    gz_args_value = (
+        f'-r -v 4'
+        f' --gui-config {default_gui_config}'
+        f' {default_world_path}'
+    )
 
     gazebo = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
@@ -45,9 +55,7 @@ def generate_launch_description():
             )
         ),
         launch_arguments={
-            'world': default_world_path,
-            'paused': 'false',
-            'verbose': 'true',
+            'gz_args': gz_args_value,
         }.items(),
     )
 
@@ -64,15 +72,15 @@ def generate_launch_description():
             '-y',
             '0.0',
             '-z',
-            '0.1',
+            '0.073',
         ],
         output='screen',
     )
 
-    bridge_cmd_vel = Node(
+    bridge_clock = Node(
         package='ros_gz_bridge',
         executable='parameter_bridge',
-        arguments=['/cmd_vel@geometry_msgs/Twist[ignition.msgs.Twist'],
+        arguments=['/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock'],
         output='screen',
     )
 
@@ -95,11 +103,16 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument(
                 name='verbose',
-                default_value='true',
-                description='Gazebo verbose output',
+                default_value='4',
+                description='Gazebo verbose output level (0-4)',
+            ),
+            DeclareLaunchArgument(
+                name='gui_config',
+                default_value=default_gui_config,
+                description='Gazebo GUI config file (no quick start)',
             ),
             gazebo,
             spawn_entity,
-            bridge_cmd_vel,
+            bridge_clock,
         ]
     )
