@@ -4,10 +4,10 @@
 
 | Topic | Type | Consumed By |
 |-------|------|-------------|
-| `/imu/data` (gz transport) | `ignition.msgs.IMU` | `ros_gz_bridge` |
-| `/scan` (gz transport) | `ignition.msgs.LaserScan` | `ros_gz_bridge` |
-| `/camera/image_raw` (gz transport) | `ignition.msgs.Image` | `ros_gz_bridge` |
-| `/camera/camera_info` (gz transport) | `ignition.msgs.CameraInfo` | `ros_gz_bridge` |
+| `/imu/data` (gz transport) | `gz.msgs.IMU` | `ros_gz_bridge` |
+| `/scan` (gz transport) | `gz.msgs.LaserScan` | `ros_gz_bridge` |
+| `/camera/image_raw` (gz transport) | `gz.msgs.Image` | `ros_gz_bridge` |
+| `/camera/camera_info` (gz transport) | `gz.msgs.CameraInfo` | `ros_gz_bridge` |
 
 ## Downstream (Produced)
 
