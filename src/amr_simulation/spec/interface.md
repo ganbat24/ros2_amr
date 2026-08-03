@@ -4,13 +4,19 @@
 
 | Topic | Type | Direction | Description |
 |-------|------|-----------|-------------|
-| `/imu/data` | `sensor_msgs/Imu` | Publish | IMU data from Gazebo Harmonic |
-| `/scan` | `sensor_msgs/LaserScan` | Publish | 2D LiDAR scan data from Gazebo Harmonic |
-| `/camera/image_raw` | `sensor_msgs/Image` | Publish | RGB camera raw image from Gazebo Harmonic |
+| `/clock` | `rosgraph_msgs/Clock` | Publish | Simulation clock (bridged by `ros_gz_bridge`) |
+
+## Description
+
+This package launches Gazebo Harmonic and spawns the robot model. Sensor data
+(LiDAR, IMU, camera) is produced on Gazebo transport topics and bridged to
+ROS 2 by `ros_gz_bridge` in `amr_sensors`. The `gz_ros2_control` plugin
+creates its own `controller_manager` and loads controllers defined in
+`amr_control/config/controller_manager.yaml`.
 
 ## Owned Parameters
 
-None owned directly by this package. Bridge nodes accept command-line args.
+None owned directly by this package.
 
 ## Owned Frames
 

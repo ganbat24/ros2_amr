@@ -5,7 +5,7 @@
 | Test | Expected Behavior |
 |------|------------------|
 | YAML loads via `yaml.safe_load` | No parse errors, all keys valid YAML |
-| `diff_drive_controller.yaml` schema | `left_wheel`, `right_wheel`, `wheel_separation`, `wheel_radius`, `enable_odom_tf` present and typed correctly |
+| `diff_drive_controller.yaml` schema | `left_wheel_names`, `right_wheel_names`, `wheel_separation`, `wheel_radius`, `enable_odom_tf` present and typed correctly |
 
 ## Runtime Tests
 
@@ -25,4 +25,4 @@
 ## Edge Cases
 
 - `enable_odom_tf: true` → controller publishes odom TF (forbidden by spec)
-- Missing `left_wheel` parameter → controller fails to activate with clear error
+- Missing `left_wheel_names` parameter → controller fails to activate with clear error

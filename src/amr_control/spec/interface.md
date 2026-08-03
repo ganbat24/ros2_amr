@@ -11,8 +11,8 @@
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `left_wheel` | string | `left_wheel_joint` | Left wheel joint name |
-| `right_wheel` | string | `right_wheel_joint` | Right wheel joint name |
+| `left_wheel_names` | string[] | `["wheel_left_joint"]` | Left wheel joint name(s) |
+| `right_wheel_names` | string[] | `["wheel_right_joint"]` | Right wheel joint name(s) |
 | `wheel_separation` | double | `0.3` | Wheel track width (m) |
 | `wheel_radius` | double | `0.033` | Wheel radius (m) |
 | `publish_rate` | double | `50.0` | Controller update rate (Hz) |

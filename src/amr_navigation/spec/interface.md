@@ -16,8 +16,8 @@
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `planner_plugin` | string | `GridBased` | Smac Planner 2D plugin name |
-| `controller_plugin` | string | `FollowPath` | DWAB local planner plugin name |
+| `controller_plugins` | string[] | `["FollowPath"]` | Controller plugin names |
+| `planner_plugins` | string[] | `["GridBased"]` | Planner plugin names |
 | `use_sim_time` | bool | `true` | Simulation clock flag |
 
 ## Owned Frames

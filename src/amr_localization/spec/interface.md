@@ -29,9 +29,8 @@
 
 ## Owned Actions
 
-- `navigate_to_pose` (Nav2, consumed by amcl for initial pose)
+None.
 
 ## Owned Services
 
-- `amcl/set_local_initial_pose`
 - `slam_toolbox/save_map`
