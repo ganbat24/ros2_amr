@@ -15,7 +15,11 @@ import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.actions import (
+    DeclareLaunchArgument,
+    IncludeLaunchDescription,
+    SetEnvironmentVariable,
+)
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
@@ -86,6 +90,8 @@ def generate_launch_description():
 
     return LaunchDescription(
         [
+            # Fix Gazebo transport on WSL2 (multicast doesn't work)
+            SetEnvironmentVariable('GZ_IP', '127.0.0.1'),
             DeclareLaunchArgument(
                 name='model',
                 default_value=default_model_path,
