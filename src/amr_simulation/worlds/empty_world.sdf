@@ -2,7 +2,7 @@
 <sdf version="1.7">
   <world name="empty_world">
     <physics type="ignored">
-      <max_step_size>0.001</max_step_size>
+      <max_step_size>0.02</max_step_size>
       <real_time_factor>1.0</real_time_factor>
     </physics>
     <gravity>0 0 -9.81</gravity>
