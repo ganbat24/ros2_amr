@@ -39,8 +39,10 @@ from launch import LaunchDescription
 from launch.actions import (
     DeclareLaunchArgument,
     IncludeLaunchDescription,
+    RegisterEventHandler,
     SetEnvironmentVariable,
 )
+from launch.event_handlers import OnProcessExit
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
@@ -59,11 +61,8 @@ def generate_launch_description():
     )
 
     # Build gz_args with resolved paths (available at parse time)
-    gz_args_value = (
-        f'-r -v 4'
-        f' --gui-config {default_gui_config}'
-        f' {default_world_path}'
-    )
+    # Use -s for server-only (headless) to avoid WSL2 OpenGL issues
+    gz_args_value = f'-s -r -v 1' f' {default_world_path}'
 
     # Include Step 1 (robot description)
     step_01_launch = IncludeLaunchDescription(
@@ -116,6 +115,29 @@ def generate_launch_description():
         output='screen',
     )
 
+    # Get path to controller config
+    amr_control_pkg = FindPackageShare('amr_control').find('amr_control')
+    controller_config = os.path.join(
+        amr_control_pkg, 'config', 'diff_drive_controller.yaml'
+    )
+
+    # Controller spawners — loaded after robot is spawned
+    joint_state_broadcaster_spawner = Node(
+        package='controller_manager',
+        executable='spawner',
+        arguments=['joint_state_broadcaster'],
+    )
+
+    diff_drive_controller_spawner = Node(
+        package='controller_manager',
+        executable='spawner',
+        arguments=[
+            'diff_drive_controller',
+            '--param-file',
+            controller_config,
+        ],
+    )
+
     return LaunchDescription(
         [
             # Fix Gazebo transport on WSL2 (multicast doesn't work)
@@ -134,5 +156,19 @@ def generate_launch_description():
             gazebo,
             spawn_entity,
             bridge_clock,
+            # Load joint_state_broadcaster after spawn completes
+            RegisterEventHandler(
+                event_handler=OnProcessExit(
+                    target_action=spawn_entity,
+                    on_exit=[joint_state_broadcaster_spawner],
+                )
+            ),
+            # Load diff_drive_controller after joint_state_broadcaster
+            RegisterEventHandler(
+                event_handler=OnProcessExit(
+                    target_action=joint_state_broadcaster_spawner,
+                    on_exit=[diff_drive_controller_spawner],
+                )
+            ),
         ]
     )
