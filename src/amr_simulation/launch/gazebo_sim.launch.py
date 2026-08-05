@@ -21,6 +21,7 @@ from launch.actions import (
     SetEnvironmentVariable,
 )
 from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.substitutions import LaunchConfiguration, PythonExpression
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 
@@ -43,11 +44,18 @@ def generate_launch_description():
         amr_simulation_pkg, 'gazebo', 'gui_no_quickstart.config'
     )
 
-    # Build gz_args with resolved paths (available at parse time)
-    gz_args_value = (
-        f'-r -v 4'
-        f' --gui-config {default_gui_config}'
-        f' {default_world_path}'
+    # Compose gz_args from launch arguments so that values forwarded by
+    # an including launch file (e.g. amr_bringup system.launch.py) take
+    # effect. Gazebo starts paused unless `-r` is given, so the `-r` flag
+    # is only included when `paused` is "false".
+    gz_args_value = PythonExpression(
+        [
+            '("-r" if "', LaunchConfiguration('paused'),
+            '" == "false" else "")',
+            ' + " -v " + "', LaunchConfiguration('verbose'), '"',
+            ' + " --gui-config " + "', LaunchConfiguration('gui_config'), '"',
+            ' + " " + "', LaunchConfiguration('world'), '"',
+        ]
     )
 
     gazebo = IncludeLaunchDescription(
