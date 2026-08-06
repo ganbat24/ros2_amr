@@ -15,6 +15,7 @@ import os
 
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
+from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 from nav2_common.launch import RewrittenYaml
@@ -34,21 +35,27 @@ def generate_launch_description():
         'behavior_trees',
         'navigate_w_replanning_and_recovery.xml',
     )
-    default_map_file = os.path.join(
-        amr_navigation_pkg, 'maps', 'empty_map.yaml'
+
+    use_sim_time = LaunchConfiguration('use_sim_time')
+    params_file = LaunchConfiguration('params_file')
+    bt_xml_filename = LaunchConfiguration('bt_xml_filename')
+
+    # Rewrite the Nav2 YAML at launch time so that use_sim_time and the
+    # behavior tree are taken from launch arguments.
+    nav2_params = RewrittenYaml(
+        source_file=params_file,
+        root_key='',
+        param_rewrites={
+            'use_sim_time': use_sim_time,
+            'default_bt_xml_filename': bt_xml_filename,
+        },
+        convert_types=True,
     )
 
     remappings = [
         ('/tf', '/tf'),
         ('/tf_static', '/tf_static'),
     ]
-
-    nav2_params = RewrittenYaml(
-        source_file=default_nav_params,
-        root_key='',
-        param_rewrites={},
-        convert_types=True,
-    )
 
     controller_server = Node(
         package='nav2_controller',
@@ -123,11 +130,6 @@ def generate_launch_description():
                 name='use_sim_time',
                 default_value='true',
                 description='Use simulation clock',
-            ),
-            DeclareLaunchArgument(
-                name='map',
-                default_value=default_map_file,
-                description='Map YAML file',
             ),
             DeclareLaunchArgument(
                 name='bt_xml_filename',
