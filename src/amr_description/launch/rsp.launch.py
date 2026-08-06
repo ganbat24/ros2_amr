@@ -18,12 +18,10 @@ import os
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
 from launch.conditions import IfCondition
-from launch.substitutions import LaunchConfiguration
+from launch.substitutions import Command, LaunchConfiguration
 
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
-
-import xacro
 
 
 def generate_launch_description():
@@ -35,8 +33,13 @@ def generate_launch_description():
         robot_description_pkg, 'urdf', 'amr.urdf.xacro'
     )
 
-    robot_description_config = xacro.process_file(default_model_path)
-    robot_description = {'robot_description': robot_description_config.toxml()}
+    # Process the xacro selected by the `robot_description` launch
+    # argument at launch time (xacro expands $(find ...) macros).
+    robot_description = {
+        'robot_description': Command(
+            ['xacro ', LaunchConfiguration('robot_description')]
+        )
+    }
 
     robot_state_publisher_node = Node(
         package='robot_state_publisher',
