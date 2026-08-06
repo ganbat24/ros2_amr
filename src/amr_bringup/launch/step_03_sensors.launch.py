@@ -32,6 +32,7 @@ import os
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
 
@@ -46,12 +47,15 @@ def generate_launch_description():
         ),
     )
 
+    use_sim_time = LaunchConfiguration('use_sim_time')
+
     # Bridge IMU: Gazebo → ROS 2
     bridge_imu = Node(
         package='ros_gz_bridge',
         executable='parameter_bridge',
         arguments=['/imu/data@sensor_msgs/Imu[gz.msgs.IMU'],
         output='screen',
+        parameters=[{'use_sim_time': use_sim_time}],
     )
 
     # Bridge LiDAR: Gazebo → ROS 2
@@ -60,6 +64,7 @@ def generate_launch_description():
         executable='parameter_bridge',
         arguments=['/scan@sensor_msgs/LaserScan[gz.msgs.LaserScan'],
         output='screen',
+        parameters=[{'use_sim_time': use_sim_time}],
     )
 
     # Bridge Camera image: Gazebo → ROS 2
@@ -68,6 +73,7 @@ def generate_launch_description():
         executable='parameter_bridge',
         arguments=['/camera/image_raw@sensor_msgs/Image[gz.msgs.Image'],
         output='screen',
+        parameters=[{'use_sim_time': use_sim_time}],
     )
 
     # Bridge Camera info: Gazebo → ROS 2
@@ -78,6 +84,7 @@ def generate_launch_description():
             '/camera/camera_info@sensor_msgs/CameraInfo[gz.msgs.CameraInfo'
         ],
         output='screen',
+        parameters=[{'use_sim_time': use_sim_time}],
     )
 
     # Image rectification
@@ -86,11 +93,12 @@ def generate_launch_description():
         executable='rectify_node',
         name='image_proc',
         remappings=[
-            ('camera/image_raw', '/camera/image_raw'),
-            ('camera/image_rect', '/image_proc/image_rect'),
-            ('camera/camera_info', '/camera/camera_info'),
+            ('image_raw', '/camera/image_raw'),
+            ('camera_info', '/camera/camera_info'),
+            ('image_rect', '/image_proc/image_rect'),
         ],
         output='screen',
+        parameters=[{'use_sim_time': use_sim_time}],
     )
 
     return LaunchDescription(

@@ -66,9 +66,9 @@ def generate_launch_description():
                 executable='rectify_node',
                 name='image_proc',
                 remappings=[
-                    ('camera/image_raw', '/camera/image_raw'),
-                    ('camera/image_rect', '/image_proc/image_rect'),
-                    ('camera/camera_info', '/camera/camera_info'),
+                    ('image_raw', '/camera/image_raw'),
+                    ('camera_info', '/camera/camera_info'),
+                    ('image_rect', '/image_proc/image_rect'),
                 ],
                 output='screen',
                 parameters=[{'use_sim_time': use_sim_time}],
