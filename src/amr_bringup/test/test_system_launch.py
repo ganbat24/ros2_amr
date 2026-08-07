@@ -11,8 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import os
 import unittest
 
+from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import TimerAction
 
@@ -29,5 +31,18 @@ def generate_test_description():
 
 
 class TestSystemLaunch(unittest.TestCase):
-    def test_launch_starts(self):
-        pass
+    def test_all_launch_files_installed(self):
+        """Every bringup launch file is present in the install space."""
+        amr_bringup_pkg = get_package_share_directory('amr_bringup')
+        for rel in (
+            'launch/system.launch.py',
+            'launch/step_01_description.launch.py',
+            'launch/step_02_gazebo.launch.py',
+            'launch/step_03_sensors.launch.py',
+            'launch/step_04_localization.launch.py',
+            'launch/step_05_navigation.launch.py',
+        ):
+            self.assertTrue(
+                os.path.isfile(os.path.join(amr_bringup_pkg, rel)),
+                f'Missing installed launch file: {rel}',
+            )

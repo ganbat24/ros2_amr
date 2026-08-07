@@ -15,15 +15,13 @@ import os
 
 import yaml
 
+from ament_index_python.packages import get_package_share_directory
+
 
 def test_diff_drive_controller_yaml_loads():
-    amr_control_pkg = os.environ['AMENT_PREFIX_PATH'].split(':')[0]
+    amr_control_pkg = get_package_share_directory('amr_control')
     yaml_path = os.path.join(
-        amr_control_pkg,
-        'share',
-        'amr_control',
-        'config',
-        'diff_drive_controller.yaml',
+        amr_control_pkg, 'config', 'diff_drive_controller.yaml'
     )
     with open(yaml_path, 'r') as f:
         config = yaml.safe_load(f)
