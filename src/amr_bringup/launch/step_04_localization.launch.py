@@ -42,6 +42,9 @@ def generate_launch_description():
     amr_localization_pkg = FindPackageShare('amr_localization').find(
         'amr_localization'
     )
+    amr_navigation_pkg = FindPackageShare('amr_navigation').find(
+        'amr_navigation'
+    )
 
     ekf_config = os.path.join(amr_localization_pkg, 'config', 'ekf.yaml')
     slam_toolbox_config = os.path.join(
@@ -53,9 +56,13 @@ def generate_launch_description():
     amcl_config = os.path.join(
         amr_localization_pkg, 'config', 'amcl', 'amcl_params.yaml'
     )
+    default_map_file = os.path.join(
+        amr_navigation_pkg, 'maps', 'empty_map.yaml'
+    )
 
     use_sim_time = LaunchConfiguration('use_sim_time')
     use_slam = LaunchConfiguration('use_slam')
+    map_file = LaunchConfiguration('map')
 
     # Include Steps 1–3 (description + Gazebo + sensors)
     step_03_launch = IncludeLaunchDescription(
@@ -102,7 +109,26 @@ def generate_launch_description():
         executable='map_server',
         name='map_server',
         output='screen',
-        parameters=[{'use_sim_time': use_sim_time}],
+        parameters=[
+            {'use_sim_time': use_sim_time, 'yaml_filename': map_file}
+        ],
+        condition=UnlessCondition(use_slam),
+    )
+
+    # map_server and amcl are lifecycle nodes: configure + activate them
+    # only in AMCL mode (in SLAM mode they are not launched).
+    lifecycle_manager = Node(
+        package='nav2_lifecycle_manager',
+        executable='lifecycle_manager',
+        name='lifecycle_manager_localization',
+        output='screen',
+        parameters=[
+            {
+                'use_sim_time': use_sim_time,
+                'autostart': True,
+                'node_names': ['map_server', 'amcl'],
+            }
+        ],
         condition=UnlessCondition(use_slam),
     )
 
@@ -119,10 +145,16 @@ def generate_launch_description():
                 description='Use SLAM Toolbox for mapping (true) or '
                 'AMCL for localization with pre-built map (false)',
             ),
+            DeclareLaunchArgument(
+                name='map',
+                default_value=default_map_file,
+                description='Map YAML file for AMCL/map_server mode',
+            ),
             step_03_launch,
             ekf_node,
             slam_toolbox_node,
             amcl_node,
             map_server_node,
+            lifecycle_manager,
         ]
     )
