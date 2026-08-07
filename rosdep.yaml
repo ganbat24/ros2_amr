@@ -68,7 +68,7 @@ nav2_lifecycle_manager:
   ubuntu: [ros-jazzy-nav2-lifecycle-manager]
 nav2_map_server:
   ubuntu: [ros-jazzy-nav2-map-server]
-nav2_smac_planner2d:
+nav2_smac_planner:
   ubuntu: [ros-jazzy-nav2-smac-planner]
 nav2_dwb_controller:
   ubuntu: [ros-jazzy-nav2-dwb-controller]

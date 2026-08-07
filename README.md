@@ -92,15 +92,23 @@ colcon build --packages-select amr_control --cmake-args -DCMAKE_BUILD_TYPE=Relea
 ## Simulation Bringup
 
 ```bash
+# Full stack: Gazebo + control + sensors + SLAM + Nav2 (default: SLAM mapping)
 ros2 launch amr_bringup system.launch.py
+
+# AMCL localization mode with the pre-built empty map
+ros2 launch amr_bringup system.launch.py use_slam:=false
+
+# Headless (server-only) Gazebo, no GUI
+ros2 launch amr_bringup system.launch.py headless:=true
 ```
 
 This launches, in order:
-1. `robot_state_publisher` + `joint_state_publisher_gui`
-2. `controller_manager` with `diff_drive_controller`
-3. Gazebo Harmonic with empty world + robot spawn
-4. Sensor bridges (LiDAR, IMU, camera)
-5. EKF + SLAM Toolbox + AMCL
+1. `robot_state_publisher` (no `joint_state_publisher` — Gazebo provides `/joint_states`)
+2. Gazebo Harmonic (empty world) + robot spawn
+3. `joint_state_broadcaster` + `diff_drive_controller` via spawners (the
+   `gz_ros2_control` plugin creates the `controller_manager`)
+4. Sensor bridges (LiDAR, IMU, camera) + `image_proc` rectify
+5. EKF + SLAM Toolbox (default) or EKF + AMCL + `map_server` (`use_slam:=false`)
 6. Nav2 lifecycle nodes
 
 ## Quick Start: Teleop
@@ -118,7 +126,7 @@ ros2 topic pub /cmd_vel geometry_msgs/Twist "{
 
 ## Visualization
 
-Launch RViz2 with the navigation config (requires the RViz config file — see [Known Issues](https://github.com/ganbat24/ros2_amr/issues))
+Launch RViz2 with the navigation config:
 
 ```bash
 ros2 run rviz2 rviz2 -d $(ros2 pkg prefix amr_bringup --share)/rviz/amr_navigation.rviz --ros-args -p use_sim_time:=true
