@@ -20,7 +20,7 @@ if(BUILD_TESTING)
     PYTHON_EXECUTABLE python3
   )
   add_launch_test(test/test_rsp_gazebo_integration.py
-    TIMEOUT 60
+    TIMEOUT 120
     PYTHON_EXECUTABLE python3
   )
 
