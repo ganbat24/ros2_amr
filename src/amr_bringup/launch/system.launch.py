@@ -11,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Top-level bringup: Gazebo + AMR with control, sensors, localization, nav.
+"""
+Top-level bringup: Gazebo + AMR with control, sensors, localization, nav.
 
 The gz_ros2_control plugin (GazeboSimROS2ControlPlugin) inside the
 URDF creates its own controller_manager; gazebo_sim.launch.py spawns

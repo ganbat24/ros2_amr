@@ -11,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Standalone controller_manager bringup (real hardware).
+"""
+Standalone controller_manager bringup (real hardware).
 
 Starts robot_state_publisher + a standalone ros2_control_node and
 loads joint_state_broadcaster and diff_drive_controller via spawners.

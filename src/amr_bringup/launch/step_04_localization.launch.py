@@ -11,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Step 4 — Localization (EKF + SLAM Toolbox or AMCL).
+"""
+Step 4 — Localization (EKF + SLAM Toolbox or AMCL).
 
 Adds robot_localization EKF for sensor fusion, and either:
   - SLAM Toolbox for online mapping (use_slam=true, default)

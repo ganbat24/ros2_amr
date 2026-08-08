@@ -11,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Step 3 — Sensor Bridges (LiDAR, IMU, Camera).
+"""
+Step 3 — Sensor Bridges (LiDAR, IMU, Camera).
 
 Bridges Gazebo sensor topics to ROS 2:
   /scan           (LiDAR)

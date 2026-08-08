@@ -11,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Step 2 — Gazebo Harmonic + Robot Spawn + Controllers.
+"""
+Step 2 — Gazebo Harmonic + Robot Spawn + Controllers.
 
 Opens Gazebo (server-only by default, -s, to avoid WSL2 OpenGL issues),
 spawns the AMR, and loads joint_state_broadcaster + diff_drive_controller

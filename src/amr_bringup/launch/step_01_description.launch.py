@@ -11,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Step 1 — Robot Description only (no Gazebo, no control).
+"""
+Step 1 — Robot Description only (no Gazebo, no control).
 
 Starts robot_state_publisher only (no joint_state_publisher since
 there is no simulator or controller to provide joint states).
