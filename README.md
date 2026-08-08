@@ -158,13 +158,17 @@ map
             ├── imu_link
             ├── caster_front_link
             ├── caster_rear_link
-            ├── laser_frame
+            ├── laser_stand_link
+            │    └── laser_frame
+            │         └── laser_lens_link
             ├── camera_link
-            └── camera_optical_frame
+            │    ├── camera_lens_link
+            │    └── camera_optical_frame
 ```
 
 - `base_link → imu_link` is a static transform (IMU URDF joint).
-- `base_link → laser_frame` and `base_link → camera_link` are static transforms.
+- `base_link → laser_stand_link → laser_frame` and
+  `base_link → camera_link` are static transforms.
 - The EKF fuses `/odom` (wheel odometry from the controller) and `/imu/data` to produce the `odom→base_link` transform.
 - `map→odom` is produced by SLAM Toolbox (mapping mode) or AMCL (localization mode).
 
@@ -175,7 +179,7 @@ map
 | `/scan` | `sensor_msgs/LaserScan` | 10 Hz | Gazebo ray sensor → `ros_gz_bridge` |
 | `/imu/data` | `sensor_msgs/Imu` | 100 Hz | Gazebo IMU plugin → `ros_gz_bridge` |
 | `/camera/image_raw` | `sensor_msgs/Image` | 30 Hz | Gazebo RGB camera → `ros_gz_bridge` → `image_proc` |
-| `/camera/camera_info` | `sensor_msgs/CameraInfo` | 30 Hz | `image_proc` |
+| `/camera/camera_info` | `sensor_msgs/CameraInfo` | 30 Hz | `ros_gz_bridge` (rectified by `image_proc` → `/image_proc/image_rect`) |
 
 ## Decision Rationale
 

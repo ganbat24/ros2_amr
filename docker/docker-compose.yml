@@ -3,9 +3,11 @@
 #
 # Usage:
 #   docker compose -f docker/docker-compose.yml up sim          # Gazebo + EKF + SLAM (mapping mode)
-#   docker compose -f docker/docker-compose.yml up sim_nav     # Gazebo + EKF + AMCL + Nav2
 #   docker compose -f docker/docker-compose.yml up rviz         # RViz connected to sim
 #   docker compose -f docker/docker-compose.yml up teleop       # Keyboard teleop
+#
+# Nav2/AMCL mode: docker compose exec sim ros2 launch amr_bringup
+#   system.launch.py use_slam:=false
 
 services:
   sim:

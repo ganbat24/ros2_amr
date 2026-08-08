@@ -10,7 +10,7 @@ This document provides the system-level data flow for the `amr_ws` stack.
 amr_ws/
   src/
     amr_description/       # URDF/Xacro, ros2_control, Gazebo sensor plugins
-    amr_control/           # diff_drive_controller config, controller_manager, C++ nodes
+    amr_control/           # diff_drive_controller config, controller_manager launch (config-only)
     amr_sensors/           # ros_gz_bridge launch + sensor bridge config
     amr_simulation/        # Gazebo Harmonic world, ros_gz_sim spawn, bridge remappings
     amr_localization/      # EKF, SLAM Toolbox, AMCL launch/config
