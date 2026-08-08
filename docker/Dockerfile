@@ -6,6 +6,15 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV ROS_DISTRO=jazzy
 ENV RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 
+# Gazebo Sim runtime (gz-sim8) ships from the OSRF apt repo; without it
+# the image has no `gz` binary and simulation cannot start.
+RUN apt-get update && apt-get install -y wget gnupg lsb-release \
+    && wget -q https://packages.osrfoundation.org/gazebo.gpg -O /usr/share/keyrings/pkgs-osrf-archive-keyring.gpg \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/pkgs-osrf-archive-keyring.gpg] http://packages.osrfoundation.org/gazebo/ubuntu-stable $(lsb_release -cs) main" > /etc/apt/sources.list.d/gazebo-stable.list \
+    && apt-get update \
+    && apt-get install -y gz-harmonic \
+    && rm -rf /var/lib/apt/lists/*
+
 # System dependencies
 RUN apt-get update && apt-get install -y \
     curl \
