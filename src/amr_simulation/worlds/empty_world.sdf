@@ -78,5 +78,9 @@
     </plugin>
     <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster">
     </plugin>
+    <!-- Required for any <sensor> in spawned models: without the sensor
+         system the LiDAR/IMU/camera entities exist but never publish. -->
+    <plugin filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors">
+    </plugin>
   </world>
 </sdf>

@@ -30,14 +30,17 @@ def generate_launch_description():
             Node(
                 package='ros_gz_bridge',
                 executable='parameter_bridge',
-                arguments=['/imu/data@sensor_msgs/Imu[gz.msgs.IMU'],
+                arguments=['/imu/data@sensor_msgs/msg/Imu[gz.msgs.IMU'],
                 output='screen',
                 parameters=[{'use_sim_time': use_sim_time}],
             ),
             Node(
                 package='ros_gz_bridge',
                 executable='parameter_bridge',
-                arguments=['/scan@sensor_msgs/LaserScan[gz.msgs.LaserScan'],
+                # gz topic /scan stays /scan on the gz side; the ROS side is
+                # remapped to /scan_raw for the receive-time restamper.
+                arguments=['/scan@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan'],
+                remappings=[('/scan', '/scan_raw')],
                 output='screen',
                 parameters=[{'use_sim_time': use_sim_time}],
             ),
@@ -45,7 +48,7 @@ def generate_launch_description():
                 package='ros_gz_bridge',
                 executable='parameter_bridge',
                 arguments=[
-                    '/camera/image_raw@sensor_msgs/Image[gz.msgs.Image'
+                    '/camera/image_raw@sensor_msgs/msg/Image[gz.msgs.Image'
                 ],
                 output='screen',
                 parameters=[{'use_sim_time': use_sim_time}],
@@ -55,7 +58,7 @@ def generate_launch_description():
                 executable='parameter_bridge',
                 arguments=[
                     '/camera/camera_info'
-                    '@sensor_msgs/CameraInfo'
+                    '@sensor_msgs/msg/CameraInfo'
                     '[gz.msgs.CameraInfo'
                 ],
                 output='screen',
@@ -71,6 +74,48 @@ def generate_launch_description():
                     ('image_rect', '/image_proc/image_rect'),
                 ],
                 output='screen',
+                parameters=[{'use_sim_time': use_sim_time}],
+            ),
+            # Re-stamp scans at receive time: under headless software
+            # rendering the gpu_lidar timestamps lag the physics clock by
+            # seconds, which makes AMCL/SLAM/costmaps drop every scan
+            # against the TF cache. The relay aligns /scan with /odom.
+            Node(
+                package='amr_sensors',
+                executable='scan_restamp.py',
+                name='scan_restamper',
+                output='log',
+                parameters=[{'use_sim_time': use_sim_time}],
+            ),
+            # The gz URDF importer attaches all sensors to the model root,
+            # so scan/camera messages carry gz-scoped frames that are not
+            # in the ROS TF tree. Publish identity static TFs to the
+            # intended ROS frames (x/y offsets are zero; z/rotation only
+            # affect 3D consumers, not 2D SLAM or image rectification).
+            Node(
+                package='tf2_ros',
+                executable='static_transform_publisher',
+                # new-style args: latched /tf_static (old-style is a one-shot
+                # /tf publish that late subscribers miss entirely)
+                arguments=[
+                    '--x', '0', '--y', '0', '--z', '0',
+                    '--roll', '0', '--pitch', '0', '--yaw', '0',
+                    '--frame-id', 'amr/base_footprint/laser',
+                    '--child-frame-id', 'laser_frame',
+                ],
+                output='log',
+                parameters=[{'use_sim_time': use_sim_time}],
+            ),
+            Node(
+                package='tf2_ros',
+                executable='static_transform_publisher',
+                arguments=[
+                    '--x', '0', '--y', '0', '--z', '0',
+                    '--roll', '0', '--pitch', '0', '--yaw', '0',
+                    '--frame-id', 'amr/base_footprint/camera',
+                    '--child-frame-id', 'camera_optical_frame',
+                ],
+                output='log',
                 parameters=[{'use_sim_time': use_sim_time}],
             ),
         ]
