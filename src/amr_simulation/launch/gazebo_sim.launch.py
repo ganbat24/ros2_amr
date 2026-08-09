@@ -114,6 +114,12 @@ def generate_launch_description():
             'diff_drive_controller',
             '--param-file',
             controller_config,
+            # ros2_control 4.x / ros2_controllers 4.x: controllers publish
+            # their topics under a namespace derived from the controller
+            # name, and cmd_vel is TwistStamped. Restore the root-level
+            # /odom + /cmd_vel contract the stack is built around.
+            '--controller-ros-args',
+            '-r /diff_drive_controller/odom:=/odom -r /diff_drive_controller/cmd_vel:=/cmd_vel',
         ],
     )
 
