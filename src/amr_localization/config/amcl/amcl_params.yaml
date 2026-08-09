@@ -44,10 +44,10 @@ amcl:
     recovery_alpha_fast: 0.0
     recovery_alpha_slow: 0.0
     resample_interval: 1
-    robot_model_type: "differential"
+    robot_model_type: "nav2_amcl::DifferentialMotionModel"
     scan_topic: /scan
     map_topic: /map
     odom_topic: /odom
-    transform_tolerance: 0.1
+    transform_tolerance: 1.0
     update_min_d: 0.2
     update_min_a: 0.2
