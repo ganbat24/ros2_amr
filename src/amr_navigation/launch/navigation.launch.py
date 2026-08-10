@@ -110,6 +110,16 @@ def generate_launch_description():
         remappings=remappings,
     )
 
+    # nav2_velocity_smoother outputs plain Twist on /cmd_vel_smoothed but
+    # ros2_controllers 4.x diff_drive subscribes TwistStamped on /cmd_vel.
+    twist_to_stamped = Node(
+        package='amr_navigation',
+        executable='twist_to_stamped.py',
+        name='twist_to_stamped',
+        output='log',
+        parameters=[{'use_sim_time': use_sim_time}],
+    )
+
     lifecycle_manager = Node(
         package='nav2_lifecycle_manager',
         executable='lifecycle_manager',
@@ -142,6 +152,7 @@ def generate_launch_description():
             behavior_server,
             bt_navigator,
             velocity_smoother,
+            twist_to_stamped,
             lifecycle_manager,
         ]
     )
