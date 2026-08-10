@@ -107,6 +107,7 @@ jobs:
       - name: Lint (fast fail)
         run: |
           . /opt/ros/jazzy/setup.sh
+          . ./install/setup.sh
           packages="${{ steps.changed-packages.outputs.packages }}"
           if [ -n "$packages" ]; then
             colcon test \
@@ -122,6 +123,9 @@ jobs:
       - name: Test (runtime only)
         run: |
           . /opt/ros/jazzy/setup.sh
+          # workspace install must be on the ament path: the launch tests
+          # xacro the URDF, which resolves $(find amr_control) and friends
+          . ./install/setup.sh
           packages="${{ steps.changed-packages.outputs.packages }}"
           if [ -n "$packages" ]; then
             colcon test \
