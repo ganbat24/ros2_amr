@@ -44,7 +44,7 @@ def generate_launch_description():
     robot_state_publisher_node = Node(
         package='robot_state_publisher',
         executable='robot_state_publisher',
-        parameters=[robot_description, {'use_sim_time': True}],
+        parameters=[robot_description, {'use_sim_time': LaunchConfiguration('use_sim_time')}],
         output='screen',
     )
 
@@ -71,6 +71,13 @@ def generate_launch_description():
                 default_value='true',
                 description='Launch joint_state_publisher (set to false '
                 'when Gazebo or ros2_control provides /joint_states)',
+            ),
+            DeclareLaunchArgument(
+                name='use_sim_time',
+                default_value='true',
+                description='Use /clock for TF stamps. The AMR stack always '
+                'runs in simulation; tests without a /clock source must '
+                'pass use_sim_time:=false.',
             ),
             robot_state_publisher_node,
             joint_state_publisher_node,

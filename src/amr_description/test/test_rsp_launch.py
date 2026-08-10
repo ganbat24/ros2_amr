@@ -53,7 +53,9 @@ def generate_test_description():
         launch_arguments={
             'robot_description': os.path.join(
                 amr_description_pkg, 'urdf', 'amr.urdf.xacro'
-            )
+            ),
+            # no /clock source in this test — the RSP must run on wall time
+            'use_sim_time': 'false',
         }.items(),
     )
     return LaunchDescription(
