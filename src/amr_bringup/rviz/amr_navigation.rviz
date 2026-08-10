@@ -1,0 +1,133 @@
+# AMR Navigation RViz config
+Panels:
+  - Class: rviz_common/Displays
+    Name: Displays
+  - Class: rviz_common/Views
+    Name: Views
+    Current:
+      Class: rviz_default_plugins/Orbit
+      Distance: 4.0
+      Focal Point:
+        X: 0.0
+        Y: 0.0
+        Z: 0.0
+      Name: Current View
+      Pitch: 0.6
+      Yaw: 1.2
+Visualization Manager:
+  Class: ""
+  Displays:
+    - Class: rviz_default_plugins/TF
+      Enabled: true
+      Name: TF
+      Frame Timeout: 15
+      Marker Scale: 1
+      Show Arrows: true
+      Show Axes: true
+      Show Names: true
+      Tree:
+        base_link:
+          base_footprint: {}
+          camera_link:
+            camera_lens_link: {}
+            camera_optical_frame: {}
+          caster_front_link: {}
+          caster_rear_link: {}
+          imu_link: {}
+          laser_frame:
+            laser_lens_link: {}
+          laser_stand_link: {}
+          wheel_left_link: {}
+          wheel_right_link: {}
+      Update Interval: 0
+      Value: true
+    - Class: rviz_default_plugins/RobotModel
+      Description Topic:
+        Value: /robot_description
+      Enabled: true
+      Name: RobotModel
+      Visual Enabled: true
+      Collision Enabled: false
+      Alpha: 1.0
+      Value: true
+    - Class: rviz_default_plugins/Map
+      Enabled: true
+      Name: Map
+      Topic:
+        Value: /map
+        Depth: 5
+        Durability Policy: Transient Local
+        History Policy: Keep Last
+      Alpha: 0.7
+      Color Scheme: map
+      Draw Behind: false
+      Value: true
+    - Class: rviz_default_plugins/LaserScan
+      Enabled: true
+      Name: LaserScan
+      Topic:
+        Value: /scan
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+      Color: 255; 0; 0
+      Color Transformer: FlatColor
+      Queue Size: 10
+      Size (Pixels): 3
+      Size (m): 0.01
+      Style: Points
+      Use Fixed Frame: true
+      Use Rainbow: false
+      Value: true
+    - Class: rviz_default_plugins/Path
+      Enabled: true
+      Name: GlobalPath
+      Topic:
+        Value: /plan
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+      Color: 0; 255; 0
+      Value: true
+    - Class: rviz_default_plugins/PoseArray
+      Enabled: true
+      Name: ParticleCloud
+      Topic:
+        Value: /particlecloud
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+      Shape: Arrow
+      Color: 255; 25; 0
+      Value: true
+  Enabled: true
+  Global Options:
+    Background Color: 48; 48; 48
+    Fixed Frame: map
+    Frame Rate: 30
+  Name: root
+  Tools:
+    - Class: rviz_default_plugins/Interact
+      Hide Inactive Objects: true
+    - Class: rviz_default_plugins/MoveCamera
+    - Class: rviz_default_plugins/Select
+    - Class: rviz_default_plugins/FocusCamera
+    - Class: rviz_default_plugins/Measure
+    - Class: rviz_default_plugins/SetInitialPose
+      Topic:
+        Value: /initialpose
+    - Class: rviz_default_plugins/SetGoal
+      Topic:
+        Value: /goal_pose
+  Value: true
+  Views:
+    Current:
+      Class: rviz_default_plugins/Orbit
+      Distance: 4.0
+      Focal Point:
+        X: 0.0
+        Y: 0.0
+        Z: 0.0
+      Name: Current View
+      Pitch: 0.6
+      Yaw: 1.2

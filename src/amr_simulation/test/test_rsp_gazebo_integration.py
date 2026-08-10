@@ -73,7 +73,7 @@ def generate_test_description():
             '-entity',
             'amr',
             '-z',
-            '0.1',
+            '0.073',
         ],
         output='screen',
     )
@@ -113,15 +113,27 @@ class TestRspGazeboIntegration(unittest.TestCase):
             ('base_link', 'camera_link'),
         ]
 
-        start = time.time()
-        while time.time() - start < 10.0:
+        # Wait until ALL expected transforms are available, with early
+        # exit as soon as they arrive (RSP publishes static TF quickly).
+        deadline = time.time() + 15.0
+        available = set()
+        while time.time() < deadline and len(available) < len(
+            expected_transforms
+        ):
             executor.spin_once(timeout_sec=0.1)
+            for parent, child in expected_transforms:
+                if (parent, child) in available:
+                    continue
+                if tf_buffer.can_transform(
+                    parent, child, rclpy.time.Time()
+                ):
+                    available.add((parent, child))
 
         node.destroy_node()
         rclpy.shutdown(context=ctx)
 
         for parent, child in expected_transforms:
             self.assertTrue(
-                tf_buffer.can_transform(parent, child, rclpy.time.Time()),
+                (parent, child) in available,
                 f'Missing transform: {parent} -> {child}',
             )

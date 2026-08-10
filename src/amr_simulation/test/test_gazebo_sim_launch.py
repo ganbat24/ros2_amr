@@ -11,8 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import os
 import unittest
 
+from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import TimerAction
 
@@ -29,5 +31,25 @@ def generate_test_description():
 
 
 class TestGazeboSimLaunch(unittest.TestCase):
-    def test_node_startup(self):
-        pass
+    def test_artifacts_exist(self):
+        """World SDF, GUI config, and launch file are installed."""
+        amr_simulation_pkg = get_package_share_directory('amr_simulation')
+        for rel in (
+            'worlds/empty_world.sdf',
+            'gazebo/gui_no_quickstart.config',
+            'launch/gazebo_sim.launch.py',
+        ):
+            self.assertTrue(
+                os.path.isfile(os.path.join(amr_simulation_pkg, rel)),
+                f'Missing installed artifact: {rel}',
+            )
+
+    def test_world_sdf_parses(self):
+        """empty_world.sdf is well-formed XML."""
+        import xml.etree.ElementTree as ET
+
+        amr_simulation_pkg = get_package_share_directory('amr_simulation')
+        world_path = os.path.join(
+            amr_simulation_pkg, 'worlds', 'empty_world.sdf'
+        )
+        ET.parse(world_path)  # raises on malformed XML

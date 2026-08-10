@@ -7,6 +7,10 @@ jobs:
     runs-on: ubuntu-24.04
     container:
       image: ros:jazzy-ros-base-noble
+      env:
+        # GPU-less runner: force Mesa software rendering (llvmpipe) so
+        # Gazebo's gpu_lidar sensor can create a GL context headless.
+        LIBGL_ALWAYS_SOFTWARE: "1"
 
     steps:
       - name: Checkout
@@ -47,6 +51,8 @@ jobs:
             curl \
             gnupg \
             lsb-release \
+            libegl-mesa0 \
+            libgl1-mesa-dri \
             python3-rosdep \
             python3-colcon-common-extensions \
             python3-pip \

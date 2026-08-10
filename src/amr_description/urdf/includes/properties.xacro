@@ -5,6 +5,8 @@
        Chassis
        ============================================================ -->
   <xacro:property name="chassis_length" value="0.28"/>
+  <!-- Chassis half-width 0.11 m < wheel_y_offset 0.15 m:
+       wheels protrude outside the chassis, as expected -->
   <xacro:property name="chassis_width" value="0.22"/>
   <xacro:property name="chassis_height" value="0.04"/>
   <xacro:property name="chassis_mass" value="5.0"/>
@@ -16,7 +18,9 @@
   <xacro:property name="wheel_radius" value="0.033"/>
   <xacro:property name="wheel_length" value="0.02"/>
   <xacro:property name="wheel_mass" value="0.5"/>
-  <xacro:property name="wheel_y_offset" value="0.13"/>
+  <!-- Wheel track: 2 * wheel_y_offset = 0.30 m, must match
+       diff_drive_controller.yaml wheel_separation -->
+  <xacro:property name="wheel_y_offset" value="0.15"/>
   <xacro:property name="wheel_z_offset" value="-0.04"/>
   <xacro:property name="wheel_effort" value="100"/>
   <xacro:property name="wheel_velocity" value="10"/>

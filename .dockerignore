@@ -6,4 +6,3 @@ log/
 *.pyc
 __pycache__/
 .colcon/
-maps/*.pgm
