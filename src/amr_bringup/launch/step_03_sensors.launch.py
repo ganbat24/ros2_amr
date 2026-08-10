@@ -124,12 +124,16 @@ def generate_launch_description():
         package='tf2_ros',
         executable='static_transform_publisher',
         # new-style args: latched /tf_static (old-style is a one-shot
-        # /tf publish that late subscribers miss entirely)
+        # /tf publish that late subscribers miss entirely). Parent is
+        # base_link and the gz-scoped sensor frame is the CHILD: an
+        # edge pointing INTO base_link would give base_link a second
+        # parent and fork the TF tree ("two or more unconnected trees"),
+        # breaking every consumer's chain lookup.
         arguments=[
             '--x', '0', '--y', '0', '--z', '0',
             '--roll', '0', '--pitch', '0', '--yaw', '0',
-            '--frame-id', 'amr/base_footprint/laser',
-            '--child-frame-id', 'laser_frame',
+            '--frame-id', 'base_link',
+            '--child-frame-id', 'amr/base_footprint/laser',
         ],
         output='log',
         parameters=[{'use_sim_time': use_sim_time}],
