@@ -107,7 +107,9 @@ def generate_launch_description():
         executable='clock_slow.py',
         name='clock_slow',
         output='log',
-        parameters=[{'use_sim_time': True}],
+        # NOTE: no use_sim_time here — with it, rclpy schedules the 20 Hz
+        # timer on the sim clock, which this very node publishes, a
+        # circular deadlock (timer never fires). Wall-time timer is fine.
     )
 
     # Controller spawners — loaded after the robot is spawned. The
