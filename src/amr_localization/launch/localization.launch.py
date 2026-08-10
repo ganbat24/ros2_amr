@@ -63,6 +63,18 @@ def generate_launch_description():
         parameters=[ekf_config, {'use_sim_time': use_sim_time}],
     )
 
+    # Re-stamp the EKF's odom->base_link TF at /clock time: the diff_drive
+    # controller's clock (inside gz_ros_control) lags /clock by seconds and
+    # drifts, which otherwise makes AMCL/Nav2 drop everything against the
+    # TF cache ("earlier than all the data").
+    tf_restamper_node = Node(
+        package='amr_localization',
+        executable='tf_restamp.py',
+        name='tf_restamper',
+        output='log',
+        parameters=[{'use_sim_time': use_sim_time}],
+    )
+
     slam_toolbox_node = Node(
         package='slam_toolbox',
         executable='async_slam_toolbox_node',
@@ -128,6 +140,7 @@ def generate_launch_description():
                 description='Map YAML file for AMCL/map_server mode',
             ),
             ekf_node,
+            tf_restamper_node,
             slam_toolbox_node,
             amcl_node,
             map_server_node,

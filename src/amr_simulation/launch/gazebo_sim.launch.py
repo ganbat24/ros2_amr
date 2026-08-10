@@ -94,8 +94,20 @@ def generate_launch_description():
     bridge_clock = Node(
         package='ros_gz_bridge',
         executable='parameter_bridge',
+        # gz /clock -> /clock_raw (ROS side remapped); clock_slow republishes
+        # /clock at 20 Hz — the raw 100 Hz reliable stream backlogs every
+        # node's clock subscription on slow hosts and their sim clocks drift.
         arguments=['/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock'],
+        remappings=[('/clock', '/clock_raw')],
         output='screen',
+    )
+
+    clock_slow_node = Node(
+        package='amr_sensors',
+        executable='clock_slow.py',
+        name='clock_slow',
+        output='log',
+        parameters=[{'use_sim_time': True}],
     )
 
     # Controller spawners — loaded after the robot is spawned. The
@@ -155,6 +167,7 @@ def generate_launch_description():
             gazebo,
             spawn_entity,
             bridge_clock,
+            clock_slow_node,
             # Load joint_state_broadcaster after spawn completes
             RegisterEventHandler(
                 event_handler=OnProcessExit(
