@@ -5,6 +5,9 @@ SHELL ["/bin/bash", "-lc"]
 ENV DEBIAN_FRONTEND=noninteractive
 ENV ROS_DISTRO=jazzy
 ENV RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+# 40+ node stacks exhaust CycloneDDS' default participant index space
+# (surfaces as a gz_ros2_control segfault at the first controller read).
+ENV CYCLONEDDS_URI=file:///etc/cyclonedds.xml
 
 # Gazebo Sim runtime (gz-sim8) ships from the OSRF apt repo; without it
 # the image has no `gz` binary and simulation cannot start. Versions are
@@ -86,12 +89,16 @@ RUN git init /ros2_ws/src/gz_ros2_control \
     && git fetch --depth 1 origin 4047614cfa89d8b77df68d64859d95c3288a3a2e \
     && git checkout --detach FETCH_HEAD
 
-RUN rosdep update && apt-get update && rosdep install --from-paths src --ignore-src -r -y && \
+RUN . /opt/ros/${ROS_DISTRO}/setup.sh \
+    && rosdep update && apt-get update && rosdep install --from-paths src --ignore-src -r -y && \
     colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
 
 # Source the workspace by default
 COPY ./docker/entrypoint.sh /ros_entrypoint.sh
 RUN chmod +x /ros_entrypoint.sh
+
+# CycloneDDS discovery tuning (see docker/cyclonedds.xml)
+COPY ./docker/cyclonedds.xml /etc/cyclonedds.xml
 
 ENTRYPOINT ["/ros_entrypoint.sh"]
 CMD ["bash"]

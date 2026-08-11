@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- CycloneDDS config for the AMR stack (verified working 2026-08).
+     - Pin the interface to eth0 (docker bridge / default host NIC) for
+       deterministic discovery.
+     - Raise MaxAutoParticipantIndex: the nav2 stack spawns 40+ nodes, and
+       stale participants from killed launches otherwise exhaust the default
+       auto index space -> "Failed to find a free participant index for
+       domain 0" -> rmw_create_node fails (in gz_ros2_control this surfaces
+       as a nil deref / segfault at the first controller read()).
+     Override CYCLONEDDS_URI in the environment for other interfaces. -->
+<CycloneDDS xmlns="https://cyclonedds.io/schemas/cyclonedds/1.0">
+  <Domain>
+    <General>
+      <Interfaces>
+        <NetworkInterface name="eth0"/>
+      </Interfaces>
+      <AllowMulticast>true</AllowMulticast>
+      <EnableMulticastLoopback>true</EnableMulticastLoopback>
+    </General>
+    <Discovery>
+      <ParticipantIndex>auto</ParticipantIndex>
+      <MaxAutoParticipantIndex>200</MaxAutoParticipantIndex>
+    </Discovery>
+  </Domain>
+</CycloneDDS>
