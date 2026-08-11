@@ -92,11 +92,12 @@ colcon build --packages-select amr_control --cmake-args -DCMAKE_BUILD_TYPE=Relea
 ## Simulation Bringup
 
 ```bash
-# Full stack: Gazebo + control + sensors + SLAM + Nav2 (default: SLAM mapping)
+# Full stack: Gazebo + control + sensors + AMCL localization + Nav2 (default)
 ros2 launch amr_bringup system.launch.py
 
-# AMCL localization mode with the pre-built empty map
-ros2 launch amr_bringup system.launch.py use_slam:=false
+# SLAM mapping mode (experimental: slam_toolbox 2.8.5 has an upstream
+# params regression — AMCL is the default until upstream fixes it)
+ros2 launch amr_bringup system.launch.py use_slam:=true
 
 # Headless (server-only) Gazebo, no GUI
 ros2 launch amr_bringup system.launch.py headless:=true
@@ -108,7 +109,8 @@ This launches, in order:
 3. `joint_state_broadcaster` + `diff_drive_controller` via spawners (the
    `gz_ros2_control` plugin creates the `controller_manager`)
 4. Sensor bridges (LiDAR, IMU, camera) + `image_proc` rectify
-5. EKF + SLAM Toolbox (default) or EKF + AMCL + `map_server` (`use_slam:=false`)
+5. EKF + AMCL + `map_server` (default) or EKF + SLAM Toolbox
+   (`use_slam:=true`)
 6. Nav2 lifecycle nodes
 
 ## Quick Start: Teleop
@@ -116,12 +118,17 @@ This launches, in order:
 ```bash
 # Keyboard teleoperation (in a separate terminal)
 ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args -p stamped:=false -r cmd_vel:=/cmd_vel
+```
 
-# Or publish a twist directly
-ros2 topic pub /cmd_vel geometry_msgs/Twist "{
-  linear: {x: 0.2},
-  angular: {z: 0.0}
-}"
+Plain `geometry_msgs/Twist` on `/cmd_vel` feeds `velocity_smoother`;
+the smoothed output is bridged to `TwistStamped` on `/cmd_vel_stamped`
+by `amr_navigation/twist_to_stamped.py`, which is what
+`diff_drive_controller` (ros2_controllers 4.x, TwistStamped-only)
+subscribes to.
+
+```bash
+# Or drive the robot directly (repeat at >2 Hz: cmd_vel_timeout is 0.5 s)
+ros2 topic pub -r 5 /cmd_vel geometry_msgs/Twist "{linear: {x: 0.2}}"
 ```
 
 ## Visualization
@@ -200,17 +207,14 @@ See the contributing guidelines in the project documentation.
 
 ## Status
 
-This stack is in **scaffolded** state — all packages have their directory structure, config files, launch scripts, and spec files in place. Implementation status varies by package:
-
-| Package | Status |
-|---------|--------|
-| `amr_description` | Scaffolded — URDF + macros + launch + tests |
-| `amr_control` | Scaffolded — config + launch + YAML tests |
-| `amr_simulation` | Scaffolded — world + launch + basic test |
-| `amr_sensors` | Scaffolded — bridge launch + minimal test |
-| `amr_localization` | Scaffolded — configs + launch + YAML test |
-| `amr_navigation` | Scaffolded — Nav2 params + launch + YAML test |
-| `amr_bringup` | Scaffolded — system launch + minimal test |
+The stack is a **working simulation baseline**: the full pipeline
+(control, sensors, localization, navigation) is verified live in Docker
+on Jazzy + Gazebo Harmonic, with a 104-test suite (0 errors / 0
+failures) run in CI. SLAM Toolbox mapping is selectable via
+`use_slam:=true` but currently pinned to AMCL as the default due to an
+upstream slam_toolbox 2.8.5 params regression. Real-hardware bringup
+(`amr_control/controller_manager.launch.py`) is wired but untested —
+it needs a hardware interface plugin in the URDF.
 
 ## License
 

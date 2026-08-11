@@ -2,12 +2,12 @@
 # Brings up simulation, RViz, and optional Nav2 in isolated containers.
 #
 # Usage:
-#   docker compose -f docker/docker-compose.yml up sim          # Gazebo + EKF + SLAM (mapping mode)
+#   docker compose -f docker/docker-compose.yml up sim          # Gazebo + EKF + AMCL (localization mode)
 #   docker compose -f docker/docker-compose.yml up rviz         # RViz connected to sim
 #   docker compose -f docker/docker-compose.yml up teleop       # Keyboard teleop
 #
-# Nav2/AMCL mode: docker compose exec sim ros2 launch amr_bringup
-#   system.launch.py use_slam:=false
+# SLAM mapping mode: docker compose exec sim ros2 launch amr_bringup
+#   system.launch.py use_slam:=true
 
 services:
   sim:
