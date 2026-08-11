@@ -51,7 +51,10 @@ def generate_test_description():
         launch_arguments={
             'robot_description': os.path.join(
                 amr_description_pkg, 'urdf', 'amr.urdf.xacro'
-            )
+            ),
+            # This test launches gazebo directly but no /clock bridge, so
+            # the RSP must run on wall time (same as test_rsp_launch.py).
+            'use_sim_time': 'false',
         }.items(),
     )
 

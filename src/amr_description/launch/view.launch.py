@@ -22,8 +22,6 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 
-import xacro
-
 
 def generate_launch_description():
     """Generate the launch description for RViz visualization."""
@@ -31,16 +29,20 @@ def generate_launch_description():
         'amr_description'
     )
 
-    xacro_file = os.path.join(amr_description_pkg, 'urdf', 'amr.urdf.xacro')
-    robot_description_config = xacro.process_file(xacro_file)
-    robot_description = {'robot_description': robot_description_config.toxml()}
-
     rsp_launch_path = os.path.join(
         amr_description_pkg, 'launch', 'rsp.launch.py'
     )
     rsp_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(rsp_launch_path),
-        launch_arguments={'robot_description': xacro_file}.items(),
+        launch_arguments={
+            'robot_description': os.path.join(
+                amr_description_pkg, 'urdf', 'amr.urdf.xacro'
+            ),
+            # Standalone inspection: no /clock source, and joint_state_
+            # publisher (GUI) lets joints be moved by hand in RViz.
+            'use_joint_state_publisher': 'true',
+            'use_sim_time': 'false',
+        }.items(),
     )
 
     rviz_config = os.path.join(
@@ -52,7 +54,6 @@ def generate_launch_description():
         executable='rviz2',
         name='rviz2',
         arguments=['-d', rviz_config],
-        parameters=[robot_description],
         output='screen',
     )
 

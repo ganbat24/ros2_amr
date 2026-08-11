@@ -50,8 +50,10 @@ geometry_msgs:
   ubuntu: [ros-jazzy-geometry-msgs]
 tf2_ros:
   ubuntu: [ros-jazzy-tf2-ros]
-nav_msgs:
-  ubuntu: [ros-jazzy-nav-msgs]
+rosgraph_msgs:
+  ubuntu: [ros-jazzy-rosgraph-msgs]
+tf2_msgs:
+  ubuntu: [ros-jazzy-tf2-msgs]
 nav2_bringup:
   ubuntu: [ros-jazzy-navigation2]
 nav2_bt_navigator:
@@ -80,8 +82,6 @@ nav2_amcl:
   ubuntu: [ros-jazzy-nav2-amcl]
 image_proc:
   ubuntu: [ros-jazzy-image-proc]
-diagnostic_msgs:
-  ubuntu: [ros-jazzy-diagnostic-msgs]
 
 # Python & launch
 launch:

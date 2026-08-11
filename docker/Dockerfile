@@ -33,7 +33,6 @@ RUN apt-get update && apt-get install -y \
     ros-jazzy-urdfdom-py \
     ros-jazzy-robot-state-publisher \
     ros-jazzy-joint-state-publisher \
-    ros-jazzy-joint-state-publisher-gui \
     ros-jazzy-ros2-control \
     ros-jazzy-ros2-controllers \
     ros-jazzy-controller-manager \

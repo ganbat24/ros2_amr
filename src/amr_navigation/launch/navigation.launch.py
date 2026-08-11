@@ -52,17 +52,11 @@ def generate_launch_description():
         convert_types=True,
     )
 
-    remappings = [
-        ('/tf', '/tf'),
-        ('/tf_static', '/tf_static'),
-    ]
-
     controller_server = Node(
         package='nav2_controller',
         executable='controller_server',
         output='screen',
         parameters=[nav2_params],
-        remappings=remappings,
     )
 
     planner_server = Node(
@@ -71,7 +65,6 @@ def generate_launch_description():
         name='planner_server',
         output='screen',
         parameters=[nav2_params],
-        remappings=remappings,
     )
 
     smoother_server = Node(
@@ -80,7 +73,6 @@ def generate_launch_description():
         name='smoother_server',
         output='screen',
         parameters=[nav2_params],
-        remappings=remappings,
     )
 
     behavior_server = Node(
@@ -89,7 +81,6 @@ def generate_launch_description():
         name='behavior_server',
         output='screen',
         parameters=[nav2_params],
-        remappings=remappings,
     )
 
     bt_navigator = Node(
@@ -98,7 +89,6 @@ def generate_launch_description():
         name='bt_navigator',
         output='screen',
         parameters=[nav2_params],
-        remappings=remappings,
     )
 
     velocity_smoother = Node(
@@ -107,11 +97,11 @@ def generate_launch_description():
         name='velocity_smoother',
         output='screen',
         parameters=[nav2_params],
-        remappings=remappings,
     )
 
     # nav2_velocity_smoother outputs plain Twist on /cmd_vel_smoothed but
-    # ros2_controllers 4.x diff_drive subscribes TwistStamped on /cmd_vel.
+    # ros2_controllers 4.x diff_drive subscribes TwistStamped (on
+    # /cmd_vel_stamped — see the spawner remap in gazebo_sim.launch.py).
     twist_to_stamped = Node(
         package='amr_navigation',
         executable='twist_to_stamped.py',
@@ -126,7 +116,6 @@ def generate_launch_description():
         name='lifecycle_manager',
         output='screen',
         parameters=[nav2_params],
-        remappings=remappings,
     )
 
     return LaunchDescription(
