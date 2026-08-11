@@ -11,7 +11,7 @@ install(
 )
 
 install(
-  PROGRAMS scripts/scan_restamp.py scripts/clock_slow.py
+  PROGRAMS scripts/scan_restamp.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

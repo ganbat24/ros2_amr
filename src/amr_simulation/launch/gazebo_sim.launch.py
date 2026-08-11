@@ -12,20 +12,53 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import os
+import shlex
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import (
     DeclareLaunchArgument,
     IncludeLaunchDescription,
+    OpaqueFunction,
     RegisterEventHandler,
     SetEnvironmentVariable,
+    SetLaunchConfiguration,
 )
 from launch.event_handlers import OnProcessExit
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import LaunchConfiguration, PythonExpression
+from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
+
+
+def _build_gz_args(context):
+    """Compose the gz sim CLI args from launch configurations.
+
+    Each value is shell-quoted individually (PythonExpression string
+    concatenation is quote-injection-prone: a world path containing
+    spaces or quotes would corrupt the argument list).
+    """
+    headless = context.launch_configurations.get('headless', 'false')
+    paused = context.launch_configurations.get('paused', 'false')
+    verbose = context.launch_configurations.get('verbose', '4')
+    gui_config = context.launch_configurations.get('gui_config')
+    world = context.launch_configurations.get('world')
+
+    # Gazebo starts paused unless `-r` is given, so `-r` is only added
+    # when the `paused` argument is "false".
+    args = []
+    if headless == 'true':
+        args.append('-s')
+    if paused == 'false':
+        args.append('-r')
+    args.extend(['-v', verbose])
+    args.extend(['--gui-config', gui_config])
+    args.append(world)
+    return [
+        SetLaunchConfiguration(
+            'gz_args', ' '.join(shlex.quote(a) for a in args)
+        )
+    ]
 
 
 def generate_launch_description():
@@ -44,22 +77,9 @@ def generate_launch_description():
         amr_control_pkg, 'config', 'diff_drive_controller.yaml'
     )
 
-    # Compose gz_args from launch arguments so that values forwarded by
-    # an including launch file (e.g. amr_bringup system.launch.py) take
-    # effect. Gazebo starts paused unless `-r` is given, so the `-r` flag
-    # is only included when `paused` is "false".
-    gz_args_value = PythonExpression(
-        [
-            '("-s " if "', LaunchConfiguration('headless'),
-            '" == "true" else "")',
-            '+ ("-r " if "', LaunchConfiguration('paused'),
-            '" == "false" else "")',
-            '+ "-v " + "', LaunchConfiguration('verbose'), '"',
-            '+ " --gui-config " + "', LaunchConfiguration('gui_config'), '"',
-            '+ " " + "', LaunchConfiguration('world'), '"',
-        ]
-    )
-
+    # gz_args is computed at launch time by _build_gz_args (above) from
+    # the launch configurations, so values forwarded by an including
+    # launch file (e.g. amr_bringup system.launch.py) take effect.
     gazebo = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(
@@ -69,7 +89,7 @@ def generate_launch_description():
             )
         ),
         launch_arguments={
-            'gz_args': gz_args_value,
+            'gz_args': LaunchConfiguration('gz_args'),
         }.items(),
     )
 
@@ -94,22 +114,13 @@ def generate_launch_description():
     bridge_clock = Node(
         package='ros_gz_bridge',
         executable='parameter_bridge',
-        # gz /clock -> /clock_raw (ROS side remapped); clock_slow republishes
-        # /clock at 20 Hz — the raw 100 Hz reliable stream backlogs every
-        # node's clock subscription on slow hosts and their sim clocks drift.
-        arguments=['/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock'],
-        remappings=[('/clock', '/clock_raw')],
+        # Best-effort (`]` marker) /clock: every sim-time consumer
+        # subscribes /clock with BEST_EFFORT QoS (verified live), and
+        # best-effort drops stale samples under load instead of
+        # backlogging the 100 Hz stream on slow hosts — which used to
+        # make the consumers' sim clocks drift apart.
+        arguments=['/clock@rosgraph_msgs/msg/Clock]gz.msgs.Clock'],
         output='screen',
-    )
-
-    clock_slow_node = Node(
-        package='amr_sensors',
-        executable='clock_slow.py',
-        name='clock_slow',
-        output='log',
-        # NOTE: no use_sim_time here — with it, rclpy schedules the 20 Hz
-        # timer on the sim clock, which this very node publishes, a
-        # circular deadlock (timer never fires). Wall-time timer is fine.
     )
 
     # Controller spawners — loaded after the robot is spawned. The
@@ -141,8 +152,17 @@ def generate_launch_description():
 
     return LaunchDescription(
         [
-            # Fix Gazebo transport on WSL2 (multicast doesn't work)
-            SetEnvironmentVariable('GZ_IP', '127.0.0.1'),
+            # Gazebo transport over loopback (works on hosts without
+            # multicast, e.g. WSL2); override gz_ip for real interfaces.
+            SetEnvironmentVariable(
+                'GZ_IP', LaunchConfiguration('gz_ip')
+            ),
+            DeclareLaunchArgument(
+                name='gz_ip',
+                default_value='127.0.0.1',
+                description='Gazebo transport IP: 127.0.0.1 (loopback, '
+                'for hosts without multicast) or a routable interface IP',
+            ),
             DeclareLaunchArgument(
                 name='world',
                 default_value=default_world_path,
@@ -168,10 +188,10 @@ def generate_launch_description():
                 default_value=default_gui_config,
                 description='Gazebo GUI config file (no quick start)',
             ),
+            OpaqueFunction(function=_build_gz_args),
             gazebo,
             spawn_entity,
             bridge_clock,
-            clock_slow_node,
             # Load joint_state_broadcaster after spawn completes
             RegisterEventHandler(
                 event_handler=OnProcessExit(
