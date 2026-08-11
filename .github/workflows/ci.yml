@@ -49,6 +49,7 @@ jobs:
           apt-get install -y \
             ccache \
             curl \
+            git \
             gnupg \
             lsb-release \
             libegl-mesa0 \
@@ -68,17 +69,17 @@ jobs:
           ccache --max-size=1G
           echo "CCACHE_DIR=$HOME/.ccache" >> "$GITHUB_ENV"
 
-      - name: Detect changed packages
-        id: changed-packages
+      - name: Overlay gz_ros2_control (jazzy-branch fix)
+        # The 1.2.19 binary segfaults at the first controller read
+        # (upstream bug); the jazzy branch carries the fix. Build the
+        # pinned tip into the workspace so CI runs the same code the
+        # Docker image ships.
         run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            packages=$(git diff --name-only origin/${{ github.base_ref }}...HEAD \
-              | grep '^src/[^/]*/' \
-              | sed 's|^src/\([^/]*\)/.*|\1|' \
-              | sort -u \
-              | tr '\n' ' ')
-            echo "packages=$packages" >> "$GITHUB_OUTPUT"
-          fi
+          git init src/gz_ros2_control
+          cd src/gz_ros2_control
+          git remote add origin https://github.com/ros-controls/gz_ros2_control.git
+          git fetch --depth 1 origin 4047614cfa89d8b77df68d64859d95c3288a3a2e
+          git checkout --detach FETCH_HEAD
 
       - name: rosdep install
         run: |
@@ -90,35 +91,18 @@ jobs:
         run: |
           . /opt/ros/jazzy/setup.sh
           cmake_args="-DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER_LAUNCHER=ccache"
-          packages="${{ steps.changed-packages.outputs.packages }}"
-          if [ -n "$packages" ]; then
-            colcon build \
-              --packages-above-and-up-to $packages \
-              --symlink-install \
-              --cmake-args $cmake_args \
-              --event-handlers console_cohesion+
-          else
-            colcon build \
-              --symlink-install \
-              --cmake-args $cmake_args \
-              --event-handlers console_cohesion+
-          fi
+          colcon build \
+            --symlink-install \
+            --cmake-args $cmake_args \
+            --event-handlers console_cohesion+
 
       - name: Lint (fast fail)
         run: |
           . /opt/ros/jazzy/setup.sh
           . ./install/setup.sh
-          packages="${{ steps.changed-packages.outputs.packages }}"
-          if [ -n "$packages" ]; then
-            colcon test \
-              --packages-select $packages \
-              --ctest-args -R lint_ \
-              --event-handlers console_cohesion+
-          else
-            colcon test \
-              --ctest-args -R lint_ \
-              --event-handlers console_cohesion+
-          fi
+          colcon test \
+            --ctest-args -R lint_ \
+            --event-handlers console_cohesion+
 
       - name: Test (runtime only)
         run: |
@@ -126,17 +110,9 @@ jobs:
           # workspace install must be on the ament path: the launch tests
           # xacro the URDF, which resolves $(find amr_control) and friends
           . ./install/setup.sh
-          packages="${{ steps.changed-packages.outputs.packages }}"
-          if [ -n "$packages" ]; then
-            colcon test \
-              --packages-select $packages \
-              --ctest-args -E lint_ \
-              --event-handlers console_cohesion+
-          else
-            colcon test \
-              --ctest-args -E lint_ \
-              --event-handlers console_cohesion+
-          fi
+          colcon test \
+            --ctest-args -E lint_ \
+            --event-handlers console_cohesion+
 
       - name: Test results
         if: always()

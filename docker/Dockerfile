@@ -7,17 +7,19 @@ ENV ROS_DISTRO=jazzy
 ENV RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 
 # Gazebo Sim runtime (gz-sim8) ships from the OSRF apt repo; without it
-# the image has no `gz` binary and simulation cannot start.
+# the image has no `gz` binary and simulation cannot start. Versions are
+# pinned to the set verified working on this stack (2026-08).
 RUN apt-get update && apt-get install -y wget gnupg lsb-release \
     && wget -q https://packages.osrfoundation.org/gazebo.gpg -O /usr/share/keyrings/pkgs-osrf-archive-keyring.gpg \
     && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/pkgs-osrf-archive-keyring.gpg] http://packages.osrfoundation.org/gazebo/ubuntu-stable $(lsb_release -cs) main" > /etc/apt/sources.list.d/gazebo-stable.list \
     && apt-get update \
-    && apt-get install -y gz-harmonic \
+    && apt-get install -y gz-harmonic=1.0.0-1~noble libgz-sim8=8.14.0-1~noble \
     && rm -rf /var/lib/apt/lists/*
 
 # System dependencies
 RUN apt-get update && apt-get install -y \
     curl \
+    git \
     gnupg \
     lsb-release \
     python3-rosdep \
@@ -72,6 +74,18 @@ RUN apt-get update && apt-get install -y \
 # Pre-compile setup
 COPY ./src /ros2_ws/src
 WORKDIR /ros2_ws
+
+# gz_ros2_control 1.2.19 (June 2026 binary) segfaults at the first
+# controller read (GazeboSimSystem::read, upstream bug — verified
+# 2026-08-10 against the official demo). The jazzy branch carries the
+# fix; pin the post-fix tip and build it into the workspace overlay so
+# the image works out of the box. Revisit when a fixed binary is out.
+RUN git init /ros2_ws/src/gz_ros2_control \
+    && cd /ros2_ws/src/gz_ros2_control \
+    && git remote add origin https://github.com/ros-controls/gz_ros2_control.git \
+    && git fetch --depth 1 origin 4047614cfa89d8b77df68d64859d95c3288a3a2e \
+    && git checkout --detach FETCH_HEAD
+
 RUN rosdep update && apt-get update && rosdep install --from-paths src --ignore-src -r -y && \
     colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
 
