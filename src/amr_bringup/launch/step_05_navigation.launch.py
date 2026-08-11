@@ -14,11 +14,14 @@
 """
 Step 5 — Nav2 Navigation Stack.
 
-Adds controller_server, planner_server, smoother_server,
-behavior_server, bt_navigator, velocity_smoother, and
-lifecycle_manager.
+Includes Step 4 (everything up to localization) and the amr_navigation
+launch: controller_server, planner_server, smoother_server,
+behavior_server, bt_navigator, velocity_smoother, the Twist->TwistStamped
+relay, and the lifecycle manager.
 
-Requires: Steps 1–4 (all prior components).
+Sim args (world/headless/...) are set at step_02 or system.launch.py.
+
+Requires: Steps 1–4.
 
 Verify:
   - ros2 node list | grep controller_server
@@ -31,9 +34,7 @@ from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
-from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
-from nav2_common.launch import RewrittenYaml
 
 
 def generate_launch_description():
@@ -51,26 +52,6 @@ def generate_launch_description():
         'navigate_w_replanning_and_recovery.xml',
     )
 
-    use_sim_time = LaunchConfiguration('use_sim_time')
-    params_file = LaunchConfiguration('params_file')
-    bt_xml_filename = LaunchConfiguration('bt_xml_filename')
-
-    nav2_params = RewrittenYaml(
-        source_file=params_file,
-        root_key='',
-        param_rewrites={
-            'use_sim_time': use_sim_time,
-            'default_bt_xml_filename': bt_xml_filename,
-        },
-        convert_types=True,
-    )
-
-    remappings = [
-        ('/tf', '/tf'),
-        ('/tf_static', '/tf_static'),
-    ]
-
-    # Include Steps 1–4 (everything up to localization)
     step_04_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(
@@ -78,81 +59,35 @@ def generate_launch_description():
                 'step_04_localization.launch.py',
             )
         ),
+        launch_arguments={
+            'use_sim_time': LaunchConfiguration('use_sim_time'),
+        }.items(),
     )
 
-    controller_server = Node(
-        package='nav2_controller',
-        executable='controller_server',
-        output='screen',
-        parameters=[nav2_params],
-        remappings=remappings,
-    )
-
-    planner_server = Node(
-        package='nav2_planner',
-        executable='planner_server',
-        name='planner_server',
-        output='screen',
-        parameters=[nav2_params],
-        remappings=remappings,
-    )
-
-    smoother_server = Node(
-        package='nav2_smoother',
-        executable='smoother_server',
-        name='smoother_server',
-        output='screen',
-        parameters=[nav2_params],
-        remappings=remappings,
-    )
-
-    behavior_server = Node(
-        package='nav2_behaviors',
-        executable='behavior_server',
-        name='behavior_server',
-        output='screen',
-        parameters=[nav2_params],
-        remappings=remappings,
-    )
-
-    bt_navigator = Node(
-        package='nav2_bt_navigator',
-        executable='bt_navigator',
-        name='bt_navigator',
-        output='screen',
-        parameters=[nav2_params],
-        remappings=remappings,
-    )
-
-    velocity_smoother = Node(
-        package='nav2_velocity_smoother',
-        executable='velocity_smoother',
-        name='velocity_smoother',
-        output='screen',
-        parameters=[nav2_params],
-        remappings=remappings,
-    )
-
-    lifecycle_manager = Node(
-        package='nav2_lifecycle_manager',
-        executable='lifecycle_manager',
-        name='lifecycle_manager',
-        output='screen',
-        parameters=[nav2_params],
-        remappings=remappings,
+    navigation_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(
+                amr_navigation_pkg, 'launch', 'navigation.launch.py'
+            )
+        ),
+        launch_arguments={
+            'use_sim_time': LaunchConfiguration('use_sim_time'),
+            'params_file': LaunchConfiguration('params_file'),
+            'bt_xml_filename': LaunchConfiguration('bt_xml_filename'),
+        }.items(),
     )
 
     return LaunchDescription(
         [
             DeclareLaunchArgument(
-                name='params_file',
-                default_value=default_nav_params,
-                description='Nav2 parameter YAML file',
-            ),
-            DeclareLaunchArgument(
                 name='use_sim_time',
                 default_value='true',
                 description='Use simulation clock',
+            ),
+            DeclareLaunchArgument(
+                name='params_file',
+                default_value=default_nav_params,
+                description='Nav2 parameter YAML file',
             ),
             DeclareLaunchArgument(
                 name='bt_xml_filename',
@@ -160,12 +95,6 @@ def generate_launch_description():
                 description='Behavior tree XML file',
             ),
             step_04_launch,
-            controller_server,
-            planner_server,
-            smoother_server,
-            behavior_server,
-            bt_navigator,
-            velocity_smoother,
-            lifecycle_manager,
+            navigation_launch,
         ]
     )

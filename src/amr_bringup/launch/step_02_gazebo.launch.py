@@ -47,6 +47,9 @@ def generate_launch_description():
     default_world_path = os.path.join(
         amr_simulation_pkg, 'worlds', 'empty_world.sdf'
     )
+    default_gui_config = os.path.join(
+        amr_simulation_pkg, 'gazebo', 'gui_no_quickstart.config'
+    )
 
     # Include Step 1 (robot description)
     step_01_launch = IncludeLaunchDescription(
@@ -56,6 +59,9 @@ def generate_launch_description():
                 'step_01_description.launch.py',
             )
         ),
+        launch_arguments={
+            'use_sim_time': LaunchConfiguration('use_sim_time'),
+        }.items(),
     )
 
     # gazebo_sim.launch.py brings up Gazebo, spawns the robot, bridges
@@ -72,6 +78,7 @@ def generate_launch_description():
             'paused': LaunchConfiguration('paused'),
             'verbose': LaunchConfiguration('verbose'),
             'headless': LaunchConfiguration('headless'),
+            'gui_config': LaunchConfiguration('gui_config'),
         }.items(),
     )
 
@@ -96,6 +103,16 @@ def generate_launch_description():
                 name='headless',
                 default_value='true',
                 description='Run Gazebo server-only (no GUI)',
+            ),
+            DeclareLaunchArgument(
+                name='gui_config',
+                default_value=default_gui_config,
+                description='Gazebo GUI config file',
+            ),
+            DeclareLaunchArgument(
+                name='use_sim_time',
+                default_value='true',
+                description='Use simulation clock',
             ),
             step_01_launch,
             gazebo_sim_launch,

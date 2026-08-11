@@ -48,6 +48,7 @@ def generate_launch_description():
             'use_joint_state_publisher': LaunchConfiguration(
                 'use_joint_state_publisher'
             ),
+            'use_sim_time': LaunchConfiguration('use_sim_time'),
         }.items(),
     )
 
@@ -58,6 +59,12 @@ def generate_launch_description():
                 default_value='false',
                 description='Launch joint_state_publisher (default false — '
                 'only enable for standalone URDF inspection)',
+            ),
+            DeclareLaunchArgument(
+                name='use_sim_time',
+                default_value='true',
+                description='Use simulation clock (set false when no '
+                '/clock source is running, e.g. standalone URDF inspection)',
             ),
             rsp_launch,
         ]

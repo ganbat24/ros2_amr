@@ -57,6 +57,7 @@ def generate_launch_description():
     paused = LaunchConfiguration('paused')
     verbose = LaunchConfiguration('verbose')
     headless = LaunchConfiguration('headless')
+    gz_ip = LaunchConfiguration('gz_ip')
     use_slam = LaunchConfiguration('use_slam')
     map_file = LaunchConfiguration('map')
     params_file = LaunchConfiguration('params_file')
@@ -83,6 +84,7 @@ def generate_launch_description():
             'paused': paused,
             'verbose': verbose,
             'headless': headless,
+            'gz_ip': gz_ip,
         }.items(),
     )
 
@@ -147,6 +149,12 @@ def generate_launch_description():
                 name='headless',
                 default_value='false',
                 description='Run Gazebo server-only, no GUI',
+            ),
+            DeclareLaunchArgument(
+                name='gz_ip',
+                default_value='127.0.0.1',
+                description='Gazebo transport IP: 127.0.0.1 (loopback, '
+                'for hosts without multicast) or a routable interface IP',
             ),
             DeclareLaunchArgument(
                 name='use_slam',

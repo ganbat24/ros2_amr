@@ -14,28 +14,27 @@
 """
 Step 4 — Localization (EKF + SLAM Toolbox or AMCL).
 
-Adds robot_localization EKF for sensor fusion, and either:
-  - SLAM Toolbox for online mapping (use_slam=true, default)
-  - AMCL + map_server for localization with a pre-built map (use_slam=false)
+Includes Step 3 (description + Gazebo + sensors) and the amr_localization
+launch: robot_localization EKF plus either SLAM Toolbox (use_slam=true)
+or AMCL + map_server (use_slam=false, default).
 
 SLAM and AMCL are mutually exclusive — both publish map → odom.
 
-Requires: Steps 1–3 (description + Gazebo + sensors).
+Sim args (world/headless/...) are set at step_02 or system.launch.py.
+
+Requires: Steps 1–3.
 
 Verify:
   - ros2 topic echo /tf --once           (odom → base_link transform)
   - ros2 node list | grep ekf
-  - ros2 node list | grep slam (or amcl)
-  - Drive the robot; SLAM should build a map in RViz
+  - ros2 node list | grep amcl (or slam)
 """
 import os
 
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
-from launch.conditions import IfCondition, UnlessCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
-from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 
 
@@ -47,25 +46,10 @@ def generate_launch_description():
         'amr_navigation'
     )
 
-    ekf_config = os.path.join(amr_localization_pkg, 'config', 'ekf.yaml')
-    slam_toolbox_config = os.path.join(
-        amr_localization_pkg,
-        'config',
-        'slam_toolbox',
-        'slam_toolbox_params.yaml',
-    )
-    amcl_config = os.path.join(
-        amr_localization_pkg, 'config', 'amcl', 'amcl_params.yaml'
-    )
     default_map_file = os.path.join(
         amr_navigation_pkg, 'maps', 'empty_map.yaml'
     )
 
-    use_sim_time = LaunchConfiguration('use_sim_time')
-    use_slam = LaunchConfiguration('use_slam')
-    map_file = LaunchConfiguration('map')
-
-    # Include Steps 1–3 (description + Gazebo + sensors)
     step_03_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(
@@ -73,76 +57,22 @@ def generate_launch_description():
                 'step_03_sensors.launch.py',
             )
         ),
+        launch_arguments={
+            'use_sim_time': LaunchConfiguration('use_sim_time'),
+        }.items(),
     )
 
-    # Extended Kalman Filter — fuses odom + IMU
-    ekf_node = Node(
-        package='robot_localization',
-        executable='ekf_node',
-        name='ekf_filter_node',
-        output='screen',
-        parameters=[ekf_config, {'use_sim_time': use_sim_time}],
-    )
-
-    # Re-stamp the EKF's odom->base_link TF at /clock time: the diff_drive
-    # controller's clock (inside gz_ros_control) lags /clock by seconds and
-    # drifts, which otherwise makes AMCL/Nav2 drop everything against the
-    # TF cache ("earlier than all the data").
-    tf_restamper_node = Node(
-        package='amr_localization',
-        executable='tf_restamp.py',
-        name='tf_restamper',
-        output='log',
-        parameters=[{'use_sim_time': use_sim_time}],
-    )
-
-    # SLAM Toolbox — online mapping (when use_slam=true)
-    slam_toolbox_node = Node(
-        package='slam_toolbox',
-        executable='async_slam_toolbox_node',
-        name='slam_toolbox',
-        output='screen',
-        parameters=[slam_toolbox_config, {'use_sim_time': use_sim_time}],
-        condition=IfCondition(use_slam),
-    )
-
-    # AMCL — global localization (when use_slam=false)
-    amcl_node = Node(
-        package='nav2_amcl',
-        executable='amcl',
-        name='amcl',
-        output='screen',
-        parameters=[amcl_config, {'use_sim_time': use_sim_time}],
-        condition=UnlessCondition(use_slam),
-    )
-
-    # Map server — serves a pre-built map for AMCL (when use_slam=false)
-    map_server_node = Node(
-        package='nav2_map_server',
-        executable='map_server',
-        name='map_server',
-        output='screen',
-        parameters=[
-            {'use_sim_time': use_sim_time, 'yaml_filename': map_file}
-        ],
-        condition=UnlessCondition(use_slam),
-    )
-
-    # map_server and amcl are lifecycle nodes: configure + activate them
-    # only in AMCL mode (in SLAM mode they are not launched).
-    lifecycle_manager = Node(
-        package='nav2_lifecycle_manager',
-        executable='lifecycle_manager',
-        name='lifecycle_manager_localization',
-        output='screen',
-        parameters=[
-            {
-                'use_sim_time': use_sim_time,
-                'autostart': True,
-                'node_names': ['map_server', 'amcl'],
-            }
-        ],
-        condition=UnlessCondition(use_slam),
+    localization_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(
+                amr_localization_pkg, 'launch', 'localization.launch.py'
+            )
+        ),
+        launch_arguments={
+            'use_sim_time': LaunchConfiguration('use_sim_time'),
+            'use_slam': LaunchConfiguration('use_slam'),
+            'map': LaunchConfiguration('map'),
+        }.items(),
     )
 
     return LaunchDescription(
@@ -154,9 +84,10 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument(
                 name='use_slam',
-                default_value='true',
-                description='Use SLAM Toolbox for mapping (true) or '
-                'AMCL for localization with pre-built map (false)',
+                default_value='false',
+                description='Use SLAM Toolbox for mapping (true) or AMCL '
+                'for localization with pre-built map (false). Default AMCL: '
+                'slam_toolbox 2.8.5 has an upstream params regression.',
             ),
             DeclareLaunchArgument(
                 name='map',
@@ -164,11 +95,6 @@ def generate_launch_description():
                 description='Map YAML file for AMCL/map_server mode',
             ),
             step_03_launch,
-            ekf_node,
-            tf_restamper_node,
-            slam_toolbox_node,
-            amcl_node,
-            map_server_node,
-            lifecycle_manager,
+            localization_launch,
         ]
     )
