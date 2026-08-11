@@ -97,7 +97,8 @@ def generate_launch_description():
             # source (teleop with stamped:=true, or a driver bridge) must
             # publish TwistStamped on /cmd_vel_stamped.
             '--controller-ros-args',
-            '-r /diff_drive_controller/odom:=/odom -r /diff_drive_controller/cmd_vel:=/cmd_vel_stamped',
+            '-r /diff_drive_controller/odom:=/odom '
+            '-r /diff_drive_controller/cmd_vel:=/cmd_vel_stamped',
         ],
     )
 

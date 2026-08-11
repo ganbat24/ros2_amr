@@ -32,7 +32,8 @@ from launch_ros.substitutions import FindPackageShare
 
 
 def _build_gz_args(context):
-    """Compose the gz sim CLI args from launch configurations.
+    """
+    Compose the gz sim CLI args from launch configurations.
 
     Each value is shell-quoted individually (PythonExpression string
     concatenation is quote-injection-prone: a world path containing
@@ -146,7 +147,8 @@ def generate_launch_description():
             # /cmd_vel_stamped (see amr_navigation/twist_to_stamped.py) so
             # /cmd_vel stays a pure Twist bus for the Nav2/teleop chain.
             '--controller-ros-args',
-            '-r /diff_drive_controller/odom:=/odom -r /diff_drive_controller/cmd_vel:=/cmd_vel_stamped',
+            '-r /diff_drive_controller/odom:=/odom '
+            '-r /diff_drive_controller/cmd_vel:=/cmd_vel_stamped',
         ],
     )
 
