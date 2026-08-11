@@ -42,9 +42,13 @@ amcl:
     initial_cov_xx: 0.25
     initial_cov_yy: 0.25
     initial_cov_aa: 0.0685
-    initial_pose_x: 0.0
-    initial_pose_y: 0.0
-    initial_pose_a: 0.0
+    # nav2 1.3.12 renamed the initial-pose params to initial_pose.* (the old
+    # flat initial_pose_x/y/a keys are gone and silently ignored).
+    initial_pose:
+      x: 0.0
+      y: 0.0
+      z: 0.0
+      yaw: 0.0
     max_particles: 2000
     min_particles: 500
     pf_err: 0.05

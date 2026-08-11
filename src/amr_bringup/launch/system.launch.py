@@ -41,6 +41,16 @@ def generate_launch_description():
     amr_navigation_pkg = FindPackageShare('amr_navigation').find(
         'amr_navigation'
     )
+    nav2_bringup_pkg = FindPackageShare('nav2_bringup').find('nav2_bringup')
+
+    default_nav_params = os.path.join(
+        amr_navigation_pkg, 'config', 'nav2_params.yaml'
+    )
+    default_bt_xml_path = os.path.join(
+        nav2_bringup_pkg,
+        'behavior_trees',
+        'navigate_w_replanning_and_recovery.xml',
+    )
 
     use_sim_time = LaunchConfiguration('use_sim_time')
     world = LaunchConfiguration('world')
@@ -49,6 +59,8 @@ def generate_launch_description():
     headless = LaunchConfiguration('headless')
     use_slam = LaunchConfiguration('use_slam')
     map_file = LaunchConfiguration('map')
+    params_file = LaunchConfiguration('params_file')
+    bt_xml_filename = LaunchConfiguration('bt_xml_filename')
 
     rsp_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
@@ -102,6 +114,8 @@ def generate_launch_description():
         ),
         launch_arguments={
             'use_sim_time': use_sim_time,
+            'params_file': params_file,
+            'bt_xml_filename': bt_xml_filename,
         }.items(),
     )
 
@@ -136,8 +150,10 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument(
                 name='use_slam',
-                default_value='true',
-                description='Use SLAM Toolbox (true) or AMCL (false)',
+                default_value='false',
+                description='Use SLAM Toolbox for mapping (true) or AMCL '
+                '(false). Default AMCL: slam_toolbox 2.8.5 has an upstream '
+                'params regression; flip to true once upstream fixes it.',
             ),
             DeclareLaunchArgument(
                 name='map',
@@ -145,6 +161,16 @@ def generate_launch_description():
                     amr_navigation_pkg, 'maps', 'empty_map.yaml'
                 ),
                 description='Map YAML for AMCL/map_server mode',
+            ),
+            DeclareLaunchArgument(
+                name='params_file',
+                default_value=default_nav_params,
+                description='Nav2 parameter YAML file',
+            ),
+            DeclareLaunchArgument(
+                name='bt_xml_filename',
+                default_value=default_bt_xml_path,
+                description='Behavior tree XML file',
             ),
             rsp_launch,
             gazebo_sim_launch,

@@ -15,7 +15,8 @@
 Localization: EKF + (SLAM Toolbox XOR AMCL + map_server).
 
 SLAM and AMCL both publish map -> odom, so they are mutually exclusive
-and selected via the `use_slam` launch argument (default: SLAM).
+and selected via the `use_slam` launch argument (default: AMCL — SLAM
+Toolbox 2.8.5 has an upstream params regression).
 map_server and AMCL are lifecycle nodes and are driven by their own
 lifecycle_manager in AMCL mode.
 """
@@ -130,9 +131,11 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument(
                 name='use_slam',
-                default_value='true',
+                default_value='false',
                 description='Use SLAM Toolbox for mapping (true) or '
-                'AMCL for localization with pre-built map (false)',
+                'AMCL for localization with pre-built map (false). '
+                'Default AMCL: slam_toolbox 2.8.5 has an upstream params '
+                'regression; flip to true once upstream fixes it.',
             ),
             DeclareLaunchArgument(
                 name='map',
