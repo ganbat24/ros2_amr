@@ -13,7 +13,9 @@
     open_loop: true
     enable_odom_tf: false
     cmd_vel_timeout: 0.5
-    use_stamped_vel: false
+    # ros2_controllers 4.x: cmd_vel is TwistStamped-only (use_stamped_vel
+    # was removed). The Nav2 chain's plain-Twist output is bridged to
+    # /cmd_vel_stamped by amr_navigation/twist_to_stamped.py.
     linear.x.max_velocity: 0.5
     linear.x.min_velocity: -0.35
     linear.x.max_acceleration: 1.0

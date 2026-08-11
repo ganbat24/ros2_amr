@@ -24,7 +24,9 @@ conflict) there.
 
 For real hardware, the <ros2_control> block in the URDF must point at
 the actual hardware interface plugin (e.g. a CAN/GPIO adapter) instead
-of gz_ros2_control/GazeboSimSystem.
+of gz_ros2_control/GazeboSimSystem, and the command source must publish
+TwistStamped on /cmd_vel_stamped (ros2_controllers 4.x dropped the
+plain-Twist cmd_vel; teleop_twist_keyboard stamped:=true works).
 """
 import os
 
@@ -75,7 +77,6 @@ def generate_launch_description():
             LaunchConfiguration('config_file'),
         ],
         output='screen',
-        remappings=[('/cmd_vel', '/cmd_vel')],
     )
 
     joint_state_broadcaster_spawner = Node(
@@ -91,6 +92,12 @@ def generate_launch_description():
             'diff_drive_controller',
             '--param-file',
             diff_drive_config,
+            # ros2_control 4.x namespaces controller topics; restore the
+            # root-level /odom and /cmd_vel_stamped contract. The command
+            # source (teleop with stamped:=true, or a driver bridge) must
+            # publish TwistStamped on /cmd_vel_stamped.
+            '--controller-ros-args',
+            '-r /diff_drive_controller/odom:=/odom -r /diff_drive_controller/cmd_vel:=/cmd_vel_stamped',
         ],
     )
 

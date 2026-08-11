@@ -131,9 +131,11 @@ def generate_launch_description():
             # ros2_control 4.x / ros2_controllers 4.x: controllers publish
             # their topics under a namespace derived from the controller
             # name, and cmd_vel is TwistStamped. Restore the root-level
-            # /odom + /cmd_vel contract the stack is built around.
+            # /odom contract and point the controller at the relay's
+            # /cmd_vel_stamped (see amr_navigation/twist_to_stamped.py) so
+            # /cmd_vel stays a pure Twist bus for the Nav2/teleop chain.
             '--controller-ros-args',
-            '-r /diff_drive_controller/odom:=/odom -r /diff_drive_controller/cmd_vel:=/cmd_vel',
+            '-r /diff_drive_controller/odom:=/odom -r /diff_drive_controller/cmd_vel:=/cmd_vel_stamped',
         ],
     )
 

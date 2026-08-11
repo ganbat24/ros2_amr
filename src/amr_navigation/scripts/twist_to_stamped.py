@@ -16,7 +16,10 @@
 #
 # nav2_velocity_smoother outputs plain geometry_msgs/Twist on
 # /cmd_vel_smoothed, but ros2_controllers 4.x diff_drive subscribes
-# TwistStamped on /cmd_vel. Republish stamped at /clock time.
+# TwistStamped (use_stamped_vel was removed). Republish stamped at /clock
+# time on /cmd_vel_stamped — a dedicated topic so /cmd_vel stays a pure
+# Twist bus (controller_server -> velocity_smoother, teleop) with no
+# type multiplexing.
 from geometry_msgs.msg import Twist, TwistStamped
 import rclpy
 from rclpy.node import Node
@@ -31,8 +34,10 @@ class TwistToStamped(Node):
             Twist, '/cmd_vel_smoothed', self.on_twist, 10)
         self.sub_clock = self.create_subscription(
             Clock, '/clock', self.on_clock, 10)
-        self.pub = self.create_publisher(TwistStamped, '/cmd_vel', 10)
-        self.get_logger().info('Twist(/cmd_vel_smoothed) -> TwistStamped(/cmd_vel)')
+        self.pub = self.create_publisher(
+            TwistStamped, '/cmd_vel_stamped', 10)
+        self.get_logger().info(
+            'Twist(/cmd_vel_smoothed) -> TwistStamped(/cmd_vel_stamped)')
 
     def on_clock(self, msg):
         self.clock_now = msg.clock
