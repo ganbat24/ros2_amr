@@ -20,6 +20,7 @@ import rclpy
 from rclpy.node import Node
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import PoseWithCovarianceStamped
+from rosgraph_msgs.msg import Clock
 
 GZ_TOPIC = '/world/amr_office/pose/info'
 GZ_MODEL = 'amr'
@@ -83,11 +84,17 @@ class RecNode(Node):
         super().__init__('metrics_recorder')
         self.odom = None
         self.amcl = None
+        self.sim = None
         self.create_subscription(
             Odometry, '/odom', lambda m: setattr(self, 'odom', m), 10)
         self.create_subscription(
             PoseWithCovarianceStamped, '/amcl_pose',
             lambda m: setattr(self, 'amcl', m), 10)
+        self.create_subscription(
+            Clock, '/clock', self._on_clock, 10)
+
+    def _on_clock(self, m):
+        self.sim = m.clock.sec + m.clock.nanosec * 1e-9
 
 
 def main():
@@ -111,9 +118,10 @@ def main():
 
     with open(args.out, 'w', newline='') as f:
         w = csv.writer(f)
-        w.writerow(['wall_t', 'gt_x', 'gt_y', 'gt_yaw',
+        w.writerow(['wall_t', 'sim_t', 'gt_x', 'gt_y', 'gt_yaw',
                     'odom_x', 'odom_y', 'odom_yaw', 'amcl_x', 'amcl_y'])
         t0 = time.time()
+        sim0 = node.sim if node.sim is not None else 0.0
         dt = 1.0 / args.rate
         while time.time() - t0 < args.duration and not stop[0]:
             with gt.lock:
@@ -125,6 +133,7 @@ def main():
                 1 - 2 * o.pose.pose.orientation.z ** 2) if o else ''
             w.writerow([
                 round(time.time() - t0, 2),
+                round(node.sim - sim0, 2) if node.sim is not None else '',
                 round(g[2], 4) if g else '', round(g[3], 4) if g else '',
                 round(g[4], 4) if g else '',
                 round(o.pose.pose.position.x, 4) if o else '',
