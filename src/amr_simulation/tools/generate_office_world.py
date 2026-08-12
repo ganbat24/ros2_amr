@@ -73,9 +73,9 @@ WALLS = [
     (0.0, WORLD_Y - WALL_T / 2, WORLD_X, WORLD_Y + WALL_T / 2, WALL_H),
     (-WALL_T / 2, 0.0, WALL_T / 2, WORLD_Y, WALL_H),
     (WORLD_X - WALL_T / 2, 0.0, WORLD_X + WALL_T / 2, WORLD_Y, WALL_H),
-    # W1a/W1b: split bottom rooms, door D1 x 4.7..6.3 (1.6 m)
-    (0.0, 3.9, 4.7, 4.1, WALL_H),
-    (6.3, 3.9, 10.0, 4.1, WALL_H),
+    # W1a/W1b: split bottom rooms, door D1 x 4.4..6.6 (2.2 m)
+    (0.0, 3.9, 4.4, 4.1, WALL_H),
+    (6.6, 3.9, 10.0, 4.1, WALL_H),
     # W2: split top; spans y 4.1..6.0 only — the y 6.0..8.0 gap (2 m) is
     # the door into the top-right room. (A wall spanning to y=8.0 sealed
     # the room against the north wall: G1 was unreachable, "no valid

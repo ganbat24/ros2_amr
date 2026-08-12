@@ -51,7 +51,7 @@ controller_server:
       vx_samples: 20
       vy_samples: 5
       vtheta_samples: 20
-      sim_time: 1.7
+      sim_time: 2.2
       linear_granularity: 0.05
       angular_granularity: 0.025
       xy_goal_tolerance: 0.25
@@ -60,13 +60,19 @@ controller_server:
       short_circuit_trajectory_evaluation: True
       stateful: True
       critics: ["RotateToGoal", "Oscillation", "BaseObstacle", "GoalAlign", "PathAlign", "PathDist", "GoalDist"]
-      BaseObstacle.scale: 0.05
+      # 0.05 made the obstacle critic nearly inert: the robot hugged
+      # O1/wall inflation because path critics dominated. 0.2 keeps
+      # obstacle cost meaningful without starving path following.
+      BaseObstacle.scale: 0.2
       PathAlign.scale: 32.0
       GoalAlign.scale: 24.0
       # Look further ahead along the path so corner cutting into obstacle
-      # inflation is penalized (0.1 m let the robot drift into walls/O1).
-      PathAlign.forward_point_distance: 0.3
-      GoalAlign.forward_point_distance: 0.3
+      # inflation is penalized (0.1 m let the robot drift into walls/O1;
+      # 0.3 m still oscillated across the path near the D1 door — the
+      # cross-track correction overshot into W1a's inflation and the
+      # robot detoured south of the door). 0.8 m smooths the correction.
+      PathAlign.forward_point_distance: 0.8
+      GoalAlign.forward_point_distance: 0.8
       PathDist.scale: 32.0
       GoalDist.scale: 24.0
       RotateToGoal.scale: 32.0
