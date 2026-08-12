@@ -127,9 +127,9 @@ def test_map_orientation_and_layout():
     # Outer walls: north (y 7.9..8.1), south (y -0.1..0.1), west, east.
     for wx, wy in [
         (5.0, 8.0), (5.0, 0.0), (0.0, 4.0), (10.0, 4.0),
-        (2.5, 4.0),   # W1a
-        (8.0, 4.0),   # W1b
-        (7.4, 6.0),   # W2
+        (2.5, 4.0),   # W1a (x 0..4.7)
+        (8.0, 4.0),   # W1b (x 6.3..10)
+        (7.8, 6.0),   # W2 (x 7.7..7.9)
         (3.5, 2.0),   # O1
         (8.5, 2.0),   # O2
         (1.8, 6.6),   # O3
@@ -144,9 +144,9 @@ def test_map_orientation_and_layout():
     # Free cells: spawn, door centers, goal poses.
     for wx, wy in [
         gen.SPAWN_POSE[:2],
-        (5.5, 4.0),   # D1 door center
-        (6.7, 4.5),   # D2 passage center
-        (9.2, 7.4),   # G1
+        (5.5, 4.0),   # D1 door center (x 4.7..6.3)
+        (7.0, 4.5),   # D2 passage center (x 6.3..7.7)
+        (9.4, 7.4),   # G1
         (3.2, 6.8),   # G2
         (9.3, 1.5),   # G3
     ]:

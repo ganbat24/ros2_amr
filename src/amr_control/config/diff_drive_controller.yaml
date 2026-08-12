@@ -10,7 +10,13 @@
     base_frame_id: base_link
     pose_covariance_diagonal: [0.001, 0.001, 0.0, 0.0, 0.0, 0.01]
     twist_covariance_diagonal: [0.001, 0.001, 0.0, 0.0, 0.0, 0.01]
-    open_loop: true
+    open_loop: false
+    # Closed-loop odometry: integrate the ACTUAL wheel joint positions
+    # (physics feedback) instead of the commanded velocities. Open-loop
+    # odom diverges from reality after any rotation sequence (observed:
+    # odom -1.7 x while the robot physically moved +1.9 x after a few
+    # nav attempts), which poisoned the EKF, AMCL's motion model, and
+    # every Nav2 goal.
     enable_odom_tf: false
     cmd_vel_timeout: 0.5
     # ros2_controllers 4.x: cmd_vel is TwistStamped-only (use_stamped_vel

@@ -175,19 +175,19 @@
 
     <model name="wall_04">
       <static>true</static>
-      <pose>2.450000 4.000000 0.600000 0 0 0</pose>
+      <pose>2.350000 4.000000 0.600000 0 0 0</pose>
       <link name="link">
         <collision name="collision">
           <geometry>
             <box>
-              <size>4.900000 0.200000 1.200000</size>
+              <size>4.700000 0.200000 1.200000</size>
             </box>
           </geometry>
         </collision>
         <visual name="visual">
           <geometry>
             <box>
-              <size>4.900000 0.200000 1.200000</size>
+              <size>4.700000 0.200000 1.200000</size>
             </box>
           </geometry>
           <material>
@@ -200,19 +200,19 @@
 
     <model name="wall_05">
       <static>true</static>
-      <pose>8.050000 4.000000 0.600000 0 0 0</pose>
+      <pose>8.150000 4.000000 0.600000 0 0 0</pose>
       <link name="link">
         <collision name="collision">
           <geometry>
             <box>
-              <size>3.900000 0.200000 1.200000</size>
+              <size>3.700000 0.200000 1.200000</size>
             </box>
           </geometry>
         </collision>
         <visual name="visual">
           <geometry>
             <box>
-              <size>3.900000 0.200000 1.200000</size>
+              <size>3.700000 0.200000 1.200000</size>
             </box>
           </geometry>
           <material>
@@ -225,7 +225,7 @@
 
     <model name="wall_06">
       <static>true</static>
-      <pose>7.400000 6.050000 0.600000 0 0 0</pose>
+      <pose>7.800000 6.050000 0.600000 0 0 0</pose>
       <link name="link">
         <collision name="collision">
           <geometry>

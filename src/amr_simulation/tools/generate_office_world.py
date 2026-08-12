@@ -53,26 +53,31 @@ WORLD_Y = 8.0
 SPAWN_POSE = (1.5, 1.5, 0.0)  # (x, y, yaw) — robot spawn + AMCL initial pose
 
 # Named goal poses used by the long-run validation scenario (map frame).
+# All goals keep >=0.35 m clearance to obstacles/walls for the 0.25 m
+# footprint radius.
 GOALS = {
-    "g1_top_right": (9.2, 7.4, 0.0),
+    "g1_top_right": (9.4, 7.4, 0.0),
     "g2_top_left": (3.2, 6.8, 0.0),
     "g3_bottom_right": (9.3, 1.5, 0.0),
     "g4_home": (1.5, 1.5, 0.0),
 }
 
 # Wall segments (axis-aligned rects). Outer walls centered on the 0/10 and
-# 0/8 lines; interior walls leave door gaps (D1 x 4.9..6.1, D2 x 6.1..7.3).
+# 0/8 lines; interior walls leave door gaps. Doors are >=1.4 m wide: the
+# robot footprint is 0.5 m and the costmap inflation_radius is 0.5 m, so a
+# 1.2 m door left only ~0.2 m of low-cost band and DWB wedged the robot
+# into the wall ends ("Start occupied" replan failures).
 WALLS = [
     # outer south / north / west / east
     (0.0, -WALL_T / 2, WORLD_X, WALL_T / 2, WALL_H),
     (0.0, WORLD_Y - WALL_T / 2, WORLD_X, WORLD_Y + WALL_T / 2, WALL_H),
     (-WALL_T / 2, 0.0, WALL_T / 2, WORLD_Y, WALL_H),
     (WORLD_X - WALL_T / 2, 0.0, WORLD_X + WALL_T / 2, WORLD_Y, WALL_H),
-    # W1a/W1b: split bottom rooms, door gap x 4.9..6.1 (1.2 m)
-    (0.0, 3.9, 4.9, 4.1, WALL_H),
-    (6.1, 3.9, 10.0, 4.1, WALL_H),
-    # W2: split top, passage x 6.1..7.3 (1.2 m) at y > 4.1
-    (7.3, 4.1, 7.5, 8.0, WALL_H),
+    # W1a/W1b: split bottom rooms, door D1 x 4.7..6.3 (1.6 m)
+    (0.0, 3.9, 4.7, 4.1, WALL_H),
+    (6.3, 3.9, 10.0, 4.1, WALL_H),
+    # W2: split top, passage x 6.3..7.7 (1.4 m) at y > 4.1
+    (7.7, 4.1, 7.9, 8.0, WALL_H),
 ]
 
 # Obstacle boxes (xmin, ymin, xmax, ymax, height).

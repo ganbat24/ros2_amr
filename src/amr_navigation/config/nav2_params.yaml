@@ -140,10 +140,16 @@ global_costmap:
       robot_base_frame: base_link
       transform_tolerance: 1.0
       update_frequency: 1.0
-      publish_frequency: 0.0
+      publish_frequency: 1.0
       rolling_window: false
-      width: 100
-      height: 100
+      # Fixed window sized to cover the whole amr_office map from the
+      # robot's spawn pose: with rolling_window=false the costmap origin
+      # is anchored at (spawn - size/2), so a 100x100 (5x5 m) window only
+      # reached ~[-1,4]x[-1,4] — goals beyond it were "no valid path".
+      # 400x320 (20x16 m) covers the 11x9 m map from the (1.5, 1.5) spawn
+      # with margin. Keep in sync with the world/map dimensions.
+      width: 400
+      height: 320
       resolution: 0.05
       robot_radius: 0.25
       plugins: ["static_layer", "obstacle_layer", "inflation_layer"]
