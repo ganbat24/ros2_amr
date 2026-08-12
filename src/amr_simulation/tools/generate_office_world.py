@@ -164,6 +164,14 @@ _SDF_TEMPLATE = """<?xml version="1.0"?>
     </model>
 
 %(models)s
+    <!-- gz-sim8 loads the DEFAULT server config (which includes the
+         Physics system) ONLY when the world SDF declares no plugins.
+         Once any <plugin> is declared, only those listed load — so the
+         physics system must be declared explicitly or the world runs
+         with no physics engine (bodies never fall, joints never move,
+         joint-state components stay empty). -->
+    <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics">
+    </plugin>
     <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands">
     </plugin>
     <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster">

@@ -78,6 +78,11 @@
     </plugin>
     <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster">
     </plugin>
+    <!-- Declared plugins REPLACE the default server config, which is what
+         normally loads the Physics system — declare it explicitly or the
+         world runs without a physics engine (nothing falls or moves). -->
+    <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics">
+    </plugin>
     <!-- Required for any <sensor> in spawned models: without the sensor
          system the LiDAR/IMU/camera entities exist but never publish. -->
     <plugin filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors">
