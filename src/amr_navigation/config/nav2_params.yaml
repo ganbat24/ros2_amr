@@ -31,7 +31,10 @@ controller_server:
       stateful: True
     FollowPath:
       plugin: "dwb_core::DWBLocalPlanner"
-      min_vel_x: 0.0
+      # Slight reverse allowed: with min_vel_x 0.0 the robot cannot back
+      # out of an obstacle's inflation zone once wedged ("no legal
+      # trajectories" forever; recoveries also fail).
+      min_vel_x: -0.2
       min_vel_y: 0.0
       max_vel_x: 0.5
       max_vel_y: 0.0
@@ -57,11 +60,13 @@ controller_server:
       short_circuit_trajectory_evaluation: True
       stateful: True
       critics: ["RotateToGoal", "Oscillation", "BaseObstacle", "GoalAlign", "PathAlign", "PathDist", "GoalDist"]
-      BaseObstacle.scale: 0.02
+      BaseObstacle.scale: 0.05
       PathAlign.scale: 32.0
       GoalAlign.scale: 24.0
-      PathAlign.forward_point_distance: 0.1
-      GoalAlign.forward_point_distance: 0.1
+      # Look further ahead along the path so corner cutting into obstacle
+      # inflation is penalized (0.1 m let the robot drift into walls/O1).
+      PathAlign.forward_point_distance: 0.3
+      GoalAlign.forward_point_distance: 0.3
       PathDist.scale: 32.0
       GoalDist.scale: 24.0
       RotateToGoal.scale: 32.0
@@ -152,7 +157,12 @@ global_costmap:
       height: 320
       resolution: 0.05
       robot_radius: 0.25
-      plugins: ["static_layer", "obstacle_layer", "inflation_layer"]
+      # Static + inflation only: the occupancy map already contains every
+      # wall/obstacle. The scan-based obstacle layer is redundant here and
+      # harmful — under sim-time TF lag its transformed points smear around
+      # a turning robot ("Start occupied" / phantom walls). The local
+      # costmap keeps the obstacle layer for near-field collision checks.
+      plugins: ["static_layer", "inflation_layer"]
       static_layer:
         plugin: "nav2_costmap_2d::StaticLayer"
         map_topic: /map
@@ -173,7 +183,11 @@ global_costmap:
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
         cost_scaling_factor: 3.0
-        inflation_radius: 0.5
+        # 0.35 m (robot radius 0.25 + 0.1): a 0.5 m inflation made every
+        # 1.4-1.6 m door opening nearly impassable and left no room for
+        # DWB recoveries once near a wall.
+        inflation_radius: 0.35
+      # (global costmap: static + inflation only — see plugins above)
 
 local_costmap:
   local_costmap:
@@ -206,7 +220,7 @@ local_costmap:
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
         cost_scaling_factor: 3.0
-        inflation_radius: 0.5
+        inflation_radius: 0.35
 
 lifecycle_manager:
   ros__parameters:
