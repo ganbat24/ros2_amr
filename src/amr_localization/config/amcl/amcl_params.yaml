@@ -17,14 +17,15 @@ amcl:
     laser_max_range: 8.0
     laser_min_range: 0.1
     laser_model_type: likelihood_field
-    # CPU-cost levers for constrained hosts (2 vCPU + software rendering):
-    # AMCL's message filter queues at 10 msgs; at 10 Hz scans it cannot keep
-    # up ("queue is full" drops) and never publishes a pose. Halve the beam
-    # count, gate updates on motion, and resample every 2nd update.
-    max_beams: 30
-    update_min_d: 0.5
-    update_min_a: 0.5
-    resample_interval: 2
+    # CPU-cost levers were set for the 2-vCPU host at RTF 1.0 (max_beams
+    # 30, update_min_d/a 0.5, resample_interval 2). With RTF 0.5 there is
+    # headroom: tighter update gates keep AMCL tracking through door
+    # crossings (0.5 m/0.5 rad gates let it fall 0.3-1 m behind during
+    # turns, which broke the costmap robot pose and all nav goals).
+    max_beams: 40
+    update_min_d: 0.15
+    update_min_a: 0.15
+    resample_interval: 1
     laser_z_hit: 0.95
     laser_z_max: 0.05
     laser_z_rand: 0.5
