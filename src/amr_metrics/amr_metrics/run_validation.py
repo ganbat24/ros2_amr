@@ -50,6 +50,36 @@ def send_goal(x, y, timeout_s):
     return 'UNKNOWN', wall
 
 
+def wait_ready(gate, retries, retry_wait):
+    """Probe the drive chain; optionally relaunch the stack on repeated failure.
+
+    The gz_ros2_control/physics bridge intermittently fails to warm up on
+    this constrained host (2 vCPU + software rendering): the odom feedback
+    stays frozen and the nav lifecycle aborts. A stack relaunch is the
+    reliable recovery.
+    """
+    import subprocess as sp
+    import time as _t
+    for i in range(retries):
+        d = gate.probe()
+        print('  probe %d: odom moved %.3f m' % (i + 1, d), flush=True)
+        if d > 0.03:
+            return True
+        if i < retries - 1:
+            print('  not ready; waiting %.0f s' % retry_wait, flush=True)
+            _t.sleep(retry_wait)
+    print('  drive chain never became ready — relaunching stack', flush=True)
+    sp.run(['bash', '-lc',
+            'pkill -f "system.launch" 2>/dev/null; pkill -f "ros2 launch" 2>/dev/null; '
+            'pkill -f "g[z] sim" 2>/dev/null; sleep 3; '
+            'nohup bash -lc \'source /opt/ros/jazzy/setup.bash && '
+            'source /ros2_ws/install/setup.bash && '
+            'ros2 launch amr_bringup system.launch.py headless:=true > /tmp/launch.log 2>&1\' '
+            '>/dev/null 2>&1 &'])
+    _t.sleep(150)
+    return False
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--out-dir', default='/tmp/amr_validation')
@@ -57,20 +87,20 @@ def main():
     ap.add_argument('--per-goal-timeout', type=float, default=280.0)
     ap.add_argument('--record-duration', type=float, default=1500.0)
     ap.add_argument('--no-plot', action='store_true')
+    ap.add_argument('--relaunch-attempts', type=int, default=2)
     args = ap.parse_args()
 
     import rclpy
+    print('== drive-chain readiness gate ==')
     rclpy.init()
     gate = Gate()
-    print('== drive-chain readiness gate ==')
     ok = False
-    for i in range(6):
-        d = gate.probe()
-        print('  probe %d: odom moved %.3f m' % (i + 1, d))
-        if d > 0.03:
+    for attempt in range(1 + args.relaunch_attempts):
+        if wait_ready(gate, 5, 30):
             ok = True
             break
-        time.sleep(25)
+        if attempt < args.relaunch_attempts:
+            print('== relaunch attempt %d ==' % (attempt + 1), flush=True)
     gate.destroy_node()
     rclpy.shutdown()
     if not ok:

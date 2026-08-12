@@ -153,8 +153,8 @@ def main():
     ax.set_title('Position error vs ground truth')
     ax.grid(alpha=0.3)
     ax.legend(fontsize=8)
-    if np.nanmax(drift) == np.nanmax(drift):  # not all-nan
-        ax.set_ylim(0, max(0.1, float(np.nanmax(np.nanmax([drift, amcl_err])))))
+    ymax = max(0.1, float(np.nanmax(np.concatenate([drift, amcl_err]))))
+    ax.set_ylim(0, ymax * 1.15)
 
     # 3. yaw error
     ax = axes[1, 0]
