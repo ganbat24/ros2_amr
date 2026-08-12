@@ -73,24 +73,33 @@ WALLS = [
     (0.0, WORLD_Y - WALL_T / 2, WORLD_X, WORLD_Y + WALL_T / 2, WALL_H),
     (-WALL_T / 2, 0.0, WALL_T / 2, WORLD_Y, WALL_H),
     (WORLD_X - WALL_T / 2, 0.0, WORLD_X + WALL_T / 2, WORLD_Y, WALL_H),
-    # W1a/W1b: split bottom rooms, door D1 x 4.4..6.6 (2.2 m)
+    # W1a/W1b: split bottom rooms, door D1 x 4.4..6.9 (2.5 m)
     (0.0, 3.9, 4.4, 4.1, WALL_H),
-    (6.6, 3.9, 10.0, 4.1, WALL_H),
-    # W2: split top; spans y 4.1..6.0 only — the y 6.0..8.0 gap (2 m) is
+    (6.9, 3.9, 10.0, 4.1, WALL_H),
+    # W2: split top; spans y 4.1..6.4 only — the y 6.4..8.0 gap (1.6 m) is
     # the door into the top-right room. (A wall spanning to y=8.0 sealed
     # the room against the north wall: G1 was unreachable, "no valid
-    # path" from any start.)
-    (7.7, 4.1, 7.9, 6.0, WALL_H),
+    # path" from any start. The original y 4.1..6.0 left the approach
+    # corner (7.7,6.0) so tight the DWB wedged 0.25 m from it.)
+    (7.7, 4.1, 7.9, 6.4, WALL_H),
 ]
 
 # Obstacle boxes (xmin, ymin, xmax, ymax, height).
 OBSTACLES = [
-    (3.1, 1.6, 3.9, 2.4, OBST_H),        # O1 — bottom-left room
+    (3.3, 1.7, 3.9, 2.3, OBST_H),        # O1 — bottom-left room (0.6x0.6,
+                                         # shifted E/N: the 0.8x0.8 original
+                                         # left only x 2.75..2.85 of low-cost
+                                         # band for the robot center on the
+                                         # west-side route — the DWB's path
+                                         # slop wedged it into the corner)
     (8.15, 1.65, 8.85, 2.35, OBST_H),    # O2 — bottom-right room
     (1.5, 6.3, 2.1, 6.9, OBST_H),        # O3 — top-left room
     (8.4, 4.6, 9.1, 5.3, OBST_H),        # O4 — top-right room (kept clear
                                          # of the W2 door entry at x 7.9)
-    (5.25, 5.25, 5.75, 5.75, OBST_H),    # O5 — corridor pinch
+    # O5 (corridor pinch at 5.25..5.75, 5.25..5.75) removed: it left a
+    # 0.15 m low-cost band between its west face and the D1 door for the
+    # robot center; the DWB's path slop wedged the robot into its corner
+    # on the top-left -> bottom-right route.
 ]
 
 # ---------------------------------------------------------------------------

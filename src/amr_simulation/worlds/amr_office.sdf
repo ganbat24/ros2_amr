@@ -205,19 +205,19 @@
 
     <model name="wall_05">
       <static>true</static>
-      <pose>8.300000 4.000000 0.600000 0 0 0</pose>
+      <pose>8.450000 4.000000 0.600000 0 0 0</pose>
       <link name="link">
         <collision name="collision">
           <geometry>
             <box>
-              <size>3.400000 0.200000 1.200000</size>
+              <size>3.100000 0.200000 1.200000</size>
             </box>
           </geometry>
         </collision>
         <visual name="visual">
           <geometry>
             <box>
-              <size>3.400000 0.200000 1.200000</size>
+              <size>3.100000 0.200000 1.200000</size>
             </box>
           </geometry>
           <material>
@@ -230,19 +230,19 @@
 
     <model name="wall_06">
       <static>true</static>
-      <pose>7.800000 5.050000 0.600000 0 0 0</pose>
+      <pose>7.800000 5.250000 0.600000 0 0 0</pose>
       <link name="link">
         <collision name="collision">
           <geometry>
             <box>
-              <size>0.200000 1.900000 1.200000</size>
+              <size>0.200000 2.300000 1.200000</size>
             </box>
           </geometry>
         </collision>
         <visual name="visual">
           <geometry>
             <box>
-              <size>0.200000 1.900000 1.200000</size>
+              <size>0.200000 2.300000 1.200000</size>
             </box>
           </geometry>
           <material>
@@ -255,19 +255,19 @@
 
     <model name="obstacle_00">
       <static>true</static>
-      <pose>3.500000 2.000000 0.400000 0 0 0</pose>
+      <pose>3.600000 2.000000 0.400000 0 0 0</pose>
       <link name="link">
         <collision name="collision">
           <geometry>
             <box>
-              <size>0.800000 0.800000 0.800000</size>
+              <size>0.600000 0.600000 0.800000</size>
             </box>
           </geometry>
         </collision>
         <visual name="visual">
           <geometry>
             <box>
-              <size>0.800000 0.800000 0.800000</size>
+              <size>0.600000 0.600000 0.800000</size>
             </box>
           </geometry>
           <material>
@@ -343,31 +343,6 @@
           <geometry>
             <box>
               <size>0.700000 0.700000 0.800000</size>
-            </box>
-          </geometry>
-          <material>
-            <ambient>0.35 0.45 0.65 1</ambient>
-            <diffuse>0.35 0.45 0.65 1</diffuse>
-          </material>
-        </visual>
-      </link>
-    </model>
-
-    <model name="obstacle_04">
-      <static>true</static>
-      <pose>5.500000 5.500000 0.400000 0 0 0</pose>
-      <link name="link">
-        <collision name="collision">
-          <geometry>
-            <box>
-              <size>0.500000 0.500000 0.800000</size>
-            </box>
-          </geometry>
-        </collision>
-        <visual name="visual">
-          <geometry>
-            <box>
-              <size>0.500000 0.500000 0.800000</size>
             </box>
           </geometry>
           <material>

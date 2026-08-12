@@ -102,8 +102,8 @@ def test_sdf_well_formed():
     assert world.get('name') == 'amr_office'
     models = world.findall('model')
     names = {m.get('name') for m in models}
-    # ground_plane + sun + 7 walls + 5 obstacles
-    assert len(models) == 14, names
+    # ground_plane + sun + 7 walls + 4 obstacles (O5 removed)
+    assert len(models) == 13, names
     assert 'wall_00' in names and 'obstacle_00' in names
 
 
@@ -134,7 +134,6 @@ def test_map_orientation_and_layout():
         (8.5, 2.0),   # O2
         (1.8, 6.6),   # O3
         (8.7, 5.0),   # O4 (new position, y 4.6..5.3)
-        (5.5, 5.5),   # O5
     ]:
         px, py = world_to_px(wx, wy)
         assert occupied(px, py), 'expected occupied at world (%g, %g)' % (
