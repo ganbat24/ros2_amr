@@ -91,7 +91,7 @@ OBSTACLES = [
 _SDF_TEMPLATE = """<?xml version="1.0"?>
 <sdf version="1.7">
   <world name="amr_office">
-    <physics type="ignored">
+    <physics type="dart">
       <max_step_size>0.01</max_step_size>
       <real_time_factor>1.0</real_time_factor>
     </physics>
