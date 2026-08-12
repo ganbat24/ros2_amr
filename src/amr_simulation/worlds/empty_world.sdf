@@ -82,5 +82,11 @@
          system the LiDAR/IMU/camera entities exist but never publish. -->
     <plugin filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors">
     </plugin>
+    <!-- IMU sensors are driven by gz-sim-imu-system, NOT by the Sensors
+         system (which only handles rendering-based sensors: camera,
+         lidar). Without this plugin an <sensor type="imu"> entity exists
+         in the ECM but never publishes. -->
+    <plugin filename="gz-sim-imu-system" name="gz::sim::systems::Imu">
+    </plugin>
   </world>
 </sdf>
