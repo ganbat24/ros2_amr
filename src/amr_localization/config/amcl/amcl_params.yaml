@@ -49,10 +49,12 @@ amcl:
     initial_cov_xx: 0.25
     initial_cov_yy: 0.25
     initial_cov_aa: 0.0685
-    # nav2 1.3.12 renamed the initial-pose params to initial_pose.* (the old
-    # flat initial_pose_x/y/a keys are gone and silently ignored), and AMCL
-    # only uses them when set_initial_pose is true — otherwise it warns
-    # "cannot publish a pose" and stays silent until an /initialpose arrives.
+    # AMCL's initial-pose params are set_initial_pose (bool) + the nested
+    # initial_pose.{x,y,z,yaw} block — the long-standing API (predates
+    # Galactic). Flat keys like initial_pose_x are never declared and are
+    # silently ignored. AMCL only uses the params when set_initial_pose is
+    # true — otherwise it warns "cannot publish a pose" and stays silent
+    # until an /initialpose arrives.
     set_initial_pose: true
     initial_pose:
       x: 0.0
