@@ -129,11 +129,11 @@ def test_map_orientation_and_layout():
         (5.0, 8.0), (5.0, 0.0), (0.0, 4.0), (10.0, 4.0),
         (2.5, 4.0),   # W1a (x 0..4.7)
         (8.0, 4.0),   # W1b (x 6.3..10)
-        (7.8, 6.0),   # W2 (x 7.7..7.9)
+        (7.8, 5.0),   # W2 (x 7.7..7.9, y 4.1..6.0)
         (3.5, 2.0),   # O1
         (8.5, 2.0),   # O2
         (1.8, 6.6),   # O3
-        (8.7, 6.6),   # O4
+        (8.7, 5.0),   # O4 (new position, y 4.6..5.3)
         (5.5, 5.5),   # O5
     ]:
         px, py = world_to_px(wx, wy)
@@ -145,7 +145,8 @@ def test_map_orientation_and_layout():
     for wx, wy in [
         gen.SPAWN_POSE[:2],
         (5.5, 4.0),   # D1 door center (x 4.7..6.3)
-        (7.0, 4.5),   # D2 passage center (x 6.3..7.7)
+        (7.0, 4.5),   # corridor left of W2
+        (7.8, 7.0),   # W2 door into the top-right room (y 6.0..8.0)
         (9.4, 7.4),   # G1
         (3.2, 6.8),   # G2
         (9.3, 1.5),   # G3

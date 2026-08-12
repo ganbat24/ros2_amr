@@ -76,8 +76,11 @@ WALLS = [
     # W1a/W1b: split bottom rooms, door D1 x 4.7..6.3 (1.6 m)
     (0.0, 3.9, 4.7, 4.1, WALL_H),
     (6.3, 3.9, 10.0, 4.1, WALL_H),
-    # W2: split top, passage x 6.3..7.7 (1.4 m) at y > 4.1
-    (7.7, 4.1, 7.9, 8.0, WALL_H),
+    # W2: split top; spans y 4.1..6.0 only — the y 6.0..8.0 gap (2 m) is
+    # the door into the top-right room. (A wall spanning to y=8.0 sealed
+    # the room against the north wall: G1 was unreachable, "no valid
+    # path" from any start.)
+    (7.7, 4.1, 7.9, 6.0, WALL_H),
 ]
 
 # Obstacle boxes (xmin, ymin, xmax, ymax, height).
@@ -85,7 +88,8 @@ OBSTACLES = [
     (3.1, 1.6, 3.9, 2.4, OBST_H),        # O1 — bottom-left room
     (8.15, 1.65, 8.85, 2.35, OBST_H),    # O2 — bottom-right room
     (1.5, 6.3, 2.1, 6.9, OBST_H),        # O3 — top-left room
-    (8.35, 6.25, 9.05, 6.95, OBST_H),    # O4 — top-right room
+    (8.4, 4.6, 9.1, 5.3, OBST_H),        # O4 — top-right room (kept clear
+                                         # of the W2 door entry at x 7.9)
     (5.25, 5.25, 5.75, 5.75, OBST_H),    # O5 — corridor pinch
 ]
 
