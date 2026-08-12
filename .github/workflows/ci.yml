@@ -127,6 +127,7 @@ jobs:
           . /opt/ros/jazzy/setup.sh
           . ./install/setup.sh
           colcon test \
+            --packages-skip gz_ros2_control gz_ros2_control_tests gz_ros2_control_demos \
             --ctest-args -R lint_ \
             --event-handlers console_cohesion+
 
@@ -136,7 +137,13 @@ jobs:
           # workspace install must be on the ament path: the launch tests
           # xacro the URDF, which resolves $(find amr_control) and friends
           . ./install/setup.sh
+          # gz_ros2_control{, _tests, _demos} are the VENDORED overlay
+          # (built from the pinned jazzy tip + guard patch): its own tests
+          # need gz sim / upstream tooling and are not this repo's
+          # responsibility — the Build step still compiles them. Test only
+          # the 7 amr packages.
           colcon test \
+            --packages-skip gz_ros2_control gz_ros2_control_tests gz_ros2_control_demos \
             --ctest-args -E lint_ \
             --event-handlers console_cohesion+
 
