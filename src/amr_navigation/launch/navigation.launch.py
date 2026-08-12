@@ -14,7 +14,7 @@
 import os
 
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument
+from launch.actions import DeclareLaunchArgument, TimerAction
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
@@ -110,12 +110,23 @@ def generate_launch_description():
         parameters=[{'use_sim_time': use_sim_time}],
     )
 
-    lifecycle_manager = Node(
-        package='nav2_lifecycle_manager',
-        executable='lifecycle_manager',
-        name='lifecycle_manager',
-        output='screen',
-        parameters=[nav2_params],
+    # Start the lifecycle manager AFTER the discovery storm settles: its
+    # service clients created during the 40-node launch storm hang (the
+    # planner_server activation call times out after ~2 min and the manager
+    # aborts bringup, leaving every nav node inactive). A 60 s delay lets
+    # discovery settle on constrained hosts; on fast hosts the nodes are
+    # simply activated a minute later.
+    lifecycle_manager = TimerAction(
+        period=60.0,
+        actions=[
+            Node(
+                package='nav2_lifecycle_manager',
+                executable='lifecycle_manager',
+                name='lifecycle_manager',
+                output='screen',
+                parameters=[nav2_params],
+            )
+        ],
     )
 
     return LaunchDescription(
