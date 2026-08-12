@@ -15,10 +15,9 @@
 Localization: EKF + (SLAM Toolbox XOR AMCL + map_server).
 
 SLAM and AMCL both publish map -> odom, so they are mutually exclusive
-and selected via the `use_slam` launch argument (default: AMCL — SLAM
-Toolbox 2.8.5 has an upstream params regression).
-map_server and AMCL are lifecycle nodes and are driven by their own
-lifecycle_manager in AMCL mode.
+and selected via the `use_slam` launch argument (default: AMCL).
+map_server, AMCL and slam_toolbox are lifecycle nodes; each mode gets
+its own lifecycle_manager with autostart.
 """
 import os
 
@@ -139,6 +138,26 @@ def generate_launch_description():
         condition=UnlessCondition(use_slam),
     )
 
+    # slam_toolbox 2.8.x's async node is a LIFECYCLE node: without
+    # configure+activate it subscribes to nothing and publishes no map
+    # (it sat unconfigured with zero output — misdiagnosed earlier as an
+    # upstream params regression). Drive it with a lifecycle manager in
+    # SLAM mode, mirroring the AMCL pattern.
+    lifecycle_manager_slam = Node(
+        package='nav2_lifecycle_manager',
+        executable='lifecycle_manager',
+        name='lifecycle_manager_slam',
+        output='screen',
+        parameters=[
+            {
+                'use_sim_time': use_sim_time,
+                'autostart': True,
+                'node_names': ['slam_toolbox'],
+            }
+        ],
+        condition=IfCondition(use_slam),
+    )
+
     return LaunchDescription(
         [
             DeclareLaunchArgument(
@@ -151,8 +170,8 @@ def generate_launch_description():
                 default_value='false',
                 description='Use SLAM Toolbox for mapping (true) or '
                 'AMCL for localization with pre-built map (false). '
-                'Default AMCL: slam_toolbox 2.8.5 has an upstream params '
-                'regression; flip to true once upstream fixes it.',
+                'Default AMCL; SLAM mode drives slam_toolbox through its '
+                'own lifecycle manager.',
             ),
             DeclareLaunchArgument(
                 name='map',
@@ -181,5 +200,6 @@ def generate_launch_description():
             amcl_node,
             map_server_node,
             lifecycle_manager,
+            lifecycle_manager_slam,
         ]
     )
