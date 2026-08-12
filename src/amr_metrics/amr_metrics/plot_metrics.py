@@ -194,9 +194,20 @@ def main():
         ax.add_patch(plt.Rectangle((x0, y0), x1 - x0, y1 - y0,
                                    color='0.75', zorder=1))
     ax.plot(gx, gy, 'g-', lw=1.6, label='ground truth')
-    ax.plot(odo_x + (SPAWN[0] - odo_x[np.argmax(valid_o)]),
-            odo_y + (SPAWN[1] - odo_y[np.argmax(valid_o)]),
-            'b-', lw=1.2, alpha=0.8, label='odometry (anchored)')
+    if valid_o.sum() > 2:
+        i0 = np.argmax(valid_o)
+        # Align the odom frame to the map frame with the full rigid
+        # transform at the first valid sample: rotate by the initial yaw
+        # offset, then translate to the matching ground-truth pose. The
+        # ready-gate probe moves the robot slightly before recording, so
+        # anchoring to the spawn marker would show a constant offset.
+        dyaw0 = 0.0 if not np.isfinite(odo_yaw[i0]) else gt_yaw[i0] - odo_yaw[i0]
+        c, s = math.cos(dyaw0), math.sin(dyaw0)
+        rel_x = odo_x - odo_x[i0]
+        rel_y = odo_y - odo_y[i0]
+        ox = rel_x * c - rel_y * s + gx[i0]
+        oy = rel_x * s + rel_y * c + gy[i0]
+        ax.plot(ox, oy, 'b-', lw=1.2, alpha=0.8, label='odometry (aligned)')
     ax.plot(ax_, ay_, 'r--', lw=1.2, alpha=0.8, label='AMCL')
     ax.plot(*SPAWN, 'ko', ms=8, label='spawn')
     for name, (gx_, gy_) in GOALS.items():
