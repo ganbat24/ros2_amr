@@ -22,9 +22,15 @@ amcl:
     # headroom: tighter update gates keep AMCL tracking through door
     # crossings (0.5 m/0.5 rad gates let it fall 0.3-1 m behind during
     # turns, which broke the costmap robot pose and all nav goals).
+    # 2026-08-12: 0.15 m/0.15 rad gates still left a systematic ~0.35 m
+    # lag (median error 0.345 m, all along-track): scan_restamp backdates
+    # scans to AMCL's own map->odom TF time, so AMCL never sees data
+    # fresher than its last update. 0.08 m/0.08 rad updates shrink the
+    # loop, and transform_tolerance 0.3 (was 1.0) stops the filter
+    # integrating scans more than 0.3 s stale.
     max_beams: 40
-    update_min_d: 0.15
-    update_min_a: 0.15
+    update_min_d: 0.08
+    update_min_a: 0.08
     resample_interval: 1
     laser_z_hit: 0.95
     laser_z_max: 0.05
@@ -63,4 +69,4 @@ amcl:
     scan_topic: /scan
     map_topic: /map
     odom_topic: /odom
-    transform_tolerance: 1.0
+    transform_tolerance: 0.3
