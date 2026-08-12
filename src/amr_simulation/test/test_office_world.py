@@ -11,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""amr_office world/map consistency tests.
+"""
+amr_office world/map consistency tests.
 
 The world SDF and the occupancy map are both generated from the floorplan
 in amr_simulation/tools/generate_office_world.py. These tests:
@@ -108,7 +109,8 @@ def test_sdf_well_formed():
 
 
 def test_map_orientation_and_layout():
-    """Pixel probes: rows/cols must land on the expected structures.
+    """
+    Pixel probes: rows/cols must land on the expected structures.
 
     map_server convention: image row 0 = north, yaml origin = lower-left
     pixel. World y grows DOWNWARD in the file.

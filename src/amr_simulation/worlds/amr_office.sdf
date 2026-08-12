@@ -362,9 +362,11 @@
          joint-state components stay empty). -->
     <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics">
     </plugin>
-    <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands">
+    <plugin filename="gz-sim-user-commands-system"
+            name="gz::sim::systems::UserCommands">
     </plugin>
-    <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster">
+    <plugin filename="gz-sim-scene-broadcaster-system"
+            name="gz::sim::systems::SceneBroadcaster">
     </plugin>
     <!-- Required for any <sensor> in spawned models: without the sensor
          system the LiDAR/IMU/camera entities exist but never publish. -->
