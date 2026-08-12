@@ -1,0 +1,20 @@
+--- a/gz_ros2_control/src/gz_system.cpp
++++ b/gz_ros2_control/src/gz_system.cpp
+@@ -678,6 +678,17 @@
+     if (!jointPositions || !jointVelocity || !jointWrench) {
+       continue;
+     }
++
++    // The components can exist while still holding no data: the physics
++    // engine creates them when the joint registers and fills them on the
++    // first step. Under load (e.g. the full nav2 stack starting at once,
++    // 2 vCPU) the controller's first read() can beat that fill, and
++    // Data()[0] on an empty std::vector dereferences nullptr — a startup
++    // segfault in GazeboSimSystem::read. Skip such cycles instead.
++    if (jointPositions->Data().empty() ||
++        jointVelocity->Data().empty()) {
++      continue;
++    }
+ 
+     this->dataPtr->joints_[i].joint_position = jointPositions->Data()[0];
+     this->dataPtr->joints_[i].joint_velocity = jointVelocity->Data()[0];

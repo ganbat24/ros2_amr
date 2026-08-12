@@ -154,16 +154,18 @@ def generate_launch_description():
 
     return LaunchDescription(
         [
-            # Gazebo transport over loopback (works on hosts without
-            # multicast, e.g. WSL2); override gz_ip for real interfaces.
-            SetEnvironmentVariable(
-                'GZ_IP', LaunchConfiguration('gz_ip')
-            ),
+            # gz_ip must be declared before SetEnvironmentVariable reads it
+            # (standalone launches don't forward it from an including file).
             DeclareLaunchArgument(
                 name='gz_ip',
                 default_value='127.0.0.1',
                 description='Gazebo transport IP: 127.0.0.1 (loopback, '
                 'for hosts without multicast) or a routable interface IP',
+            ),
+            # Gazebo transport over loopback (works on hosts without
+            # multicast, e.g. WSL2); override gz_ip for real interfaces.
+            SetEnvironmentVariable(
+                'GZ_IP', LaunchConfiguration('gz_ip')
             ),
             DeclareLaunchArgument(
                 name='world',

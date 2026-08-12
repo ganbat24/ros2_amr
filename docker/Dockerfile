@@ -83,11 +83,16 @@ WORKDIR /ros2_ws
 # 2026-08-10 against the official demo). The jazzy branch carries the
 # fix; pin the post-fix tip and build it into the workspace overlay so
 # the image works out of the box. Revisit when a fixed binary is out.
+# docker/patches/gz_ros2_control-empty-data-guard.patch additionally
+# guards the remaining startup race (empty joint-state components under
+# load -> Data()[0] null deref).
+COPY ./docker/patches /tmp/patches
 RUN git init /ros2_ws/src/gz_ros2_control \
     && cd /ros2_ws/src/gz_ros2_control \
     && git remote add origin https://github.com/ros-controls/gz_ros2_control.git \
     && git fetch --depth 1 origin 4047614cfa89d8b77df68d64859d95c3288a3a2e \
-    && git checkout --detach FETCH_HEAD
+    && git checkout --detach FETCH_HEAD \
+    && git apply /tmp/patches/gz_ros2_control-empty-data-guard.patch
 
 RUN . /opt/ros/${ROS_DISTRO}/setup.sh \
     && rosdep update && apt-get update && rosdep install --from-paths src --ignore-src -r -y && \

@@ -96,14 +96,16 @@ jobs:
       - name: Overlay gz_ros2_control (jazzy-branch fix)
         # The 1.2.19 binary segfaults at the first controller read
         # (upstream bug); the jazzy branch carries the fix. Build the
-        # pinned tip into the workspace so CI runs the same code the
-        # Docker image ships.
+        # pinned tip (plus the empty-data guard patch, see
+        # docker/patches/) into the workspace so CI runs the same code
+        # the Docker image ships.
         run: |
           git init src/gz_ros2_control
           cd src/gz_ros2_control
           git remote add origin https://github.com/ros-controls/gz_ros2_control.git
           git fetch --depth 1 origin 4047614cfa89d8b77df68d64859d95c3288a3a2e
           git checkout --detach FETCH_HEAD
+          git apply /__w/ros2_amr/ros2_amr/docker/patches/gz_ros2_control-empty-data-guard.patch
 
       - name: rosdep install
         run: |
