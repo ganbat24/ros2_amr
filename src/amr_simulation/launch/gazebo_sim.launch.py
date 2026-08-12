@@ -115,12 +115,12 @@ def generate_launch_description():
     bridge_clock = Node(
         package='ros_gz_bridge',
         executable='parameter_bridge',
-        # Best-effort (`]` marker) /clock: every sim-time consumer
-        # subscribes /clock with BEST_EFFORT QoS (verified live), and
-        # best-effort drops stale samples under load instead of
-        # backlogging the 100 Hz stream on slow hosts — which used to
-        # make the consumers' sim clocks drift apart.
-        arguments=['/clock@rosgraph_msgs/msg/Clock]gz.msgs.Clock'],
+        # `[` = GZ->ROS direction (the `]` marker is ROS->GZ, NOT a
+        # reliability flag). Consumers subscribe /clock best-effort, so a
+        # reliable publisher is compatible and cheap to drop on slow hosts;
+        # the historical "clock backlog" was a symptom of the tf_restamp
+        # self-loop CPU spin (fixed), not of the reliable clock itself.
+        arguments=['/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock'],
         output='screen',
     )
 
