@@ -55,6 +55,9 @@ def generate_launch_description():
     use_sim_time = LaunchConfiguration('use_sim_time')
     use_slam = LaunchConfiguration('use_slam')
     map_file = LaunchConfiguration('map')
+    initial_x = LaunchConfiguration('initial_x')
+    initial_y = LaunchConfiguration('initial_y')
+    initial_yaw = LaunchConfiguration('initial_yaw')
 
     ekf_node = Node(
         package='robot_localization',
@@ -90,7 +93,21 @@ def generate_launch_description():
         executable='amcl',
         name='amcl',
         output='screen',
-        parameters=[amcl_config, {'use_sim_time': use_sim_time}],
+        parameters=[
+            amcl_config,
+            {
+                'use_sim_time': use_sim_time,
+                # Override the YAML initial pose from launch args so the
+                # stack is world-agnostic (defaults match the amr_office
+                # spawn in amr_simulation/tools/generate_office_world.py).
+                'initial_pose': {
+                    'x': initial_x,
+                    'y': initial_y,
+                    'z': 0.0,
+                    'yaw': initial_yaw,
+                },
+            },
+        ],
         condition=UnlessCondition(use_slam),
     )
 
@@ -141,6 +158,22 @@ def generate_launch_description():
                 name='map',
                 default_value=default_map_file,
                 description='Map YAML file for AMCL/map_server mode',
+            ),
+            DeclareLaunchArgument(
+                name='initial_x',
+                default_value='1.5',
+                description='AMCL initial pose x (map frame; must match '
+                'the robot spawn of the active world)',
+            ),
+            DeclareLaunchArgument(
+                name='initial_y',
+                default_value='1.5',
+                description='AMCL initial pose y (map frame)',
+            ),
+            DeclareLaunchArgument(
+                name='initial_yaw',
+                default_value='0.0',
+                description='AMCL initial pose yaw (radians)',
             ),
             ekf_node,
             tf_restamper_node,

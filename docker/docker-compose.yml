@@ -37,7 +37,7 @@ services:
     command: >
       ros2 launch amr_bringup system.launch.py
         use_sim_time:=true
-        world:=/ros2_ws/src/amr_simulation/worlds/empty_world.sdf
+        world:=/ros2_ws/src/amr_simulation/worlds/amr_office.sdf
         headless:=${AMR_GZ_HEADLESS:-false}
     stdin_open: true
     tty: true

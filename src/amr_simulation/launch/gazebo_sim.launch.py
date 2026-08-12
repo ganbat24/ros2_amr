@@ -103,11 +103,13 @@ def generate_launch_description():
             '-entity',
             'amr',
             '-x',
-            '0.0',
+            LaunchConfiguration('spawn_x'),
             '-y',
-            '0.0',
+            LaunchConfiguration('spawn_y'),
             '-z',
             '0.073',
+            '-Y',
+            LaunchConfiguration('spawn_yaw'),
         ],
         output='screen',
     )
@@ -161,6 +163,21 @@ def generate_launch_description():
                 default_value='127.0.0.1',
                 description='Gazebo transport IP: 127.0.0.1 (loopback, '
                 'for hosts without multicast) or a routable interface IP',
+            ),
+            DeclareLaunchArgument(
+                name='spawn_x',
+                default_value='0.0',
+                description='Robot spawn x (world frame)',
+            ),
+            DeclareLaunchArgument(
+                name='spawn_y',
+                default_value='0.0',
+                description='Robot spawn y (world frame)',
+            ),
+            DeclareLaunchArgument(
+                name='spawn_yaw',
+                default_value='0.0',
+                description='Robot spawn yaw (radians)',
             ),
             # Gazebo transport over loopback (works on hosts without
             # multicast, e.g. WSL2); override gz_ip for real interfaces.

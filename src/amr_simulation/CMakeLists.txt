@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD 20)
 find_package(ament_cmake REQUIRED)
 
 install(
-  DIRECTORY launch worlds gazebo
+  DIRECTORY launch worlds gazebo tools
   DESTINATION share/${PROJECT_NAME}
 )
 
@@ -22,6 +22,12 @@ if(BUILD_TESTING)
   add_launch_test(test/test_rsp_gazebo_integration.py
     TIMEOUT 120
     PYTHON_EXECUTABLE python3
+  )
+
+  find_package(ament_cmake_pytest REQUIRED)
+  ament_add_pytest_test(
+    test_office_world test/test_office_world.py
+    TIMEOUT 60
   )
 
 endif()

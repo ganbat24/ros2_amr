@@ -62,6 +62,12 @@ def generate_launch_description():
     map_file = LaunchConfiguration('map')
     params_file = LaunchConfiguration('params_file')
     bt_xml_filename = LaunchConfiguration('bt_xml_filename')
+    spawn_x = LaunchConfiguration('spawn_x')
+    spawn_y = LaunchConfiguration('spawn_y')
+    spawn_yaw = LaunchConfiguration('spawn_yaw')
+    initial_x = LaunchConfiguration('initial_x')
+    initial_y = LaunchConfiguration('initial_y')
+    initial_yaw = LaunchConfiguration('initial_yaw')
 
     rsp_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
@@ -85,6 +91,9 @@ def generate_launch_description():
             'verbose': verbose,
             'headless': headless,
             'gz_ip': gz_ip,
+            'spawn_x': spawn_x,
+            'spawn_y': spawn_y,
+            'spawn_yaw': spawn_yaw,
         }.items(),
     )
 
@@ -107,6 +116,9 @@ def generate_launch_description():
             'use_sim_time': use_sim_time,
             'use_slam': use_slam,
             'map': map_file,
+            'initial_x': initial_x,
+            'initial_y': initial_y,
+            'initial_yaw': initial_yaw,
         }.items(),
     )
 
@@ -131,7 +143,7 @@ def generate_launch_description():
             DeclareLaunchArgument(
                 name='world',
                 default_value=os.path.join(
-                    amr_simulation_pkg, 'worlds', 'empty_world.sdf'
+                    amr_simulation_pkg, 'worlds', 'amr_office.sdf'
                 ),
                 description='Gazebo world SDF',
             ),
@@ -166,9 +178,40 @@ def generate_launch_description():
             DeclareLaunchArgument(
                 name='map',
                 default_value=os.path.join(
-                    amr_navigation_pkg, 'maps', 'empty_map.yaml'
+                    amr_navigation_pkg, 'maps', 'amr_office.yaml'
                 ),
                 description='Map YAML for AMCL/map_server mode',
+            ),
+            DeclareLaunchArgument(
+                name='spawn_x',
+                default_value='1.5',
+                description='Robot spawn x (world frame)',
+            ),
+            DeclareLaunchArgument(
+                name='spawn_y',
+                default_value='1.5',
+                description='Robot spawn y (world frame)',
+            ),
+            DeclareLaunchArgument(
+                name='spawn_yaw',
+                default_value='0.0',
+                description='Robot spawn yaw (radians)',
+            ),
+            DeclareLaunchArgument(
+                name='initial_x',
+                default_value='1.5',
+                description='AMCL initial pose x (map frame; must match '
+                'the robot spawn)',
+            ),
+            DeclareLaunchArgument(
+                name='initial_y',
+                default_value='1.5',
+                description='AMCL initial pose y (map frame)',
+            ),
+            DeclareLaunchArgument(
+                name='initial_yaw',
+                default_value='0.0',
+                description='AMCL initial pose yaw (radians)',
             ),
             DeclareLaunchArgument(
                 name='params_file',
