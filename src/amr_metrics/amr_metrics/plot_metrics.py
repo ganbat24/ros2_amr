@@ -12,6 +12,8 @@ Usage: ros2 run amr_metrics plot_metrics <traj.csv> [out.png]
 """
 import argparse
 import math
+import os
+import re
 import sys
 
 import matplotlib
@@ -19,20 +21,77 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 
-# Office floorplan (must match generate_office_world.py)
-WALLS = [
+# Fallback floorplan (only used when the generated world SDF cannot be found)
+_FALLBACK_WALLS = [
     (0.0, 0.0, 10.0, 0.2), (0.0, 7.8, 10.0, 8.0), (0.0, 0.0, 0.2, 8.0),
     (9.8, 0.0, 10.0, 8.0),
     (0.0, 3.9, 4.4, 4.1), (6.6, 3.9, 10.0, 4.1),
     (7.7, 4.1, 7.9, 6.0),
 ]
-OBSTACLES = [
+_FALLBACK_OBSTACLES = [
     (3.1, 1.6, 3.9, 2.4), (8.15, 1.65, 8.85, 2.35), (1.5, 6.3, 2.1, 6.9),
-    (8.4, 4.6, 9.1, 5.3), (5.25, 5.25, 5.75, 5.75),
+    (8.4, 4.6, 9.1, 5.3),
 ]
 SPAWN = (1.5, 1.5)
 GOALS = {'g1_top_right': (9.4, 7.4), 'g2_top_left': (3.2, 6.8),
          'g3_bottom_right': (9.3, 1.5), 'g4_home': (1.5, 1.5)}
+
+
+def _world_sdf_candidates():
+    """Locate the generated world SDF (the single source of truth for the
+    floorplan): ament share first, then the source tree."""
+    cands = []
+    try:
+        from ament_index_python.packages import get_package_share_directory
+        try:
+            share = get_package_share_directory('amr_simulation')
+            cands.append(os.path.join(share, 'worlds', 'amr_office.sdf'))
+        except Exception:
+            pass
+    except ImportError:
+        pass
+    here = os.path.dirname(os.path.abspath(__file__))
+    cands += [
+        os.path.normpath(os.path.join(
+            here, '..', '..', 'amr_simulation', 'worlds', 'amr_office.sdf')),
+        '/ros2_ws/src/amr_simulation/worlds/amr_office.sdf',
+    ]
+    return cands
+
+
+def load_floorplan():
+    """Parse wall_*/obstacle_* model boxes out of the generated world SDF.
+
+    Returns (walls, obstacles) as (xmin, ymin, xmax, ymax) tuples, so the
+    report always shows the floorplan that was actually simulated.
+    """
+    sdf = None
+    for p in _world_sdf_candidates():
+        if os.path.isfile(p):
+            with open(p) as f:
+                sdf = f.read()
+            break
+    if sdf is None:
+        print('WARNING: amr_office.sdf not found, using fallback floorplan')
+        return _FALLBACK_WALLS, _FALLBACK_OBSTACLES
+
+    walls, obstacles = [], []
+    for m in re.finditer(
+            r'<model name="(wall_\d+|obstacle_\d+)">(.*?)</model>',
+            sdf, re.S):
+        name, body = m.group(1), m.group(2)
+        pose = re.search(r'<pose>\s*([-\d.eE]+)\s+([-\d.eE]+)', body)
+        size = re.search(r'<size>\s*([-\d.eE]+)\s+([-\d.eE]+)', body)
+        if not pose or not size:
+            continue
+        cx, cy = float(pose.group(1)), float(pose.group(2))
+        sx, sy = float(size.group(1)), float(size.group(2))
+        rect = (cx - sx / 2, cy - sy / 2, cx + sx / 2, cy + sy / 2)
+        (walls if name.startswith('wall') else obstacles).append(rect)
+    return walls, obstacles
+
+
+WALLS, OBSTACLES = load_floorplan()
 
 
 def load_csv(path):
@@ -71,7 +130,13 @@ def main():
     if len(rows) < 10:
         print('too few rows (%d)' % len(rows))
         return 1
-    t = series(rows, 'wall_t')
+    # x-axis: simulation time when recorded, else wall time
+    if 'sim_t' in rows[0]:
+        t = series(rows, 'sim_t')
+        tunit = 'sim time'
+    else:
+        t = series(rows, 'wall_t')
+        tunit = 'wall time'
     gx, gy = series(rows, 'gt_x'), series(rows, 'gt_y')
     odo_x, odo_y = series(rows, 'odom_x'), series(rows, 'odom_y')
     ax_, ay_ = series(rows, 'amcl_x'), series(rows, 'amcl_y')
@@ -148,7 +213,7 @@ def main():
     ax = axes[0, 1]
     ax.plot(t, drift, 'b-', lw=1.2, label='odometry drift error')
     ax.plot(t, amcl_err, 'r-', lw=1.2, label='AMCL localization error')
-    ax.set_xlabel('wall time (s)')
+    ax.set_xlabel('%s (s)' % tunit)
     ax.set_ylabel('error (m)')
     ax.set_title('Position error vs ground truth')
     ax.grid(alpha=0.3)
@@ -159,7 +224,7 @@ def main():
     # 3. yaw error
     ax = axes[1, 0]
     ax.plot(t, odo_yaw_err, 'b-', lw=1.2, label='odometry yaw error')
-    ax.set_xlabel('wall time (s)')
+    ax.set_xlabel('%s (s)' % tunit)
     ax.set_ylabel('yaw error (rad)')
     ax.set_title('Heading error vs ground truth')
     ax.grid(alpha=0.3)
@@ -168,7 +233,7 @@ def main():
     # 4. speed profile
     ax = axes[1, 1]
     ax.plot(t, speed, 'g-', lw=1.2)
-    ax.set_xlabel('wall time (s)')
+    ax.set_xlabel('%s (s)' % tunit)
     ax.set_ylabel('speed (m/s)')
     ax.set_title('Ground-truth speed')
     ax.grid(alpha=0.3)
