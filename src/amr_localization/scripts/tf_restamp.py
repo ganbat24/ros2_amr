@@ -40,6 +40,24 @@ from tf2_msgs.msg import TFMessage
 STALE_AFTER_NS = int(0.5e9)
 
 
+def _stamp_ns(stamp):
+    """Convert a builtin_interfaces/Time message to nanoseconds."""
+    return stamp.sec * 1_000_000_000 + stamp.nanosec
+
+
+def is_stale(clock_now, stamp):
+    """
+    Return True if `stamp` lags `clock_now` by more than STALE_AFTER_NS.
+
+    Pure function over builtin_interfaces/Time messages (the exact types
+    delivered on /clock and /tf). rclpy's Time class cannot subtract
+    builtin Time messages directly, so the comparison is done in ns.
+    """
+    if clock_now is None:
+        return False
+    return _stamp_ns(clock_now) - _stamp_ns(stamp) > STALE_AFTER_NS
+
+
 class TfRestamper(Node):
     def __init__(self):
         super().__init__('tf_restamper')
@@ -56,9 +74,7 @@ class TfRestamper(Node):
         self.clock_now = msg.clock
 
     def _is_stale(self, stamp):
-        if self.clock_now is None:
-            return False
-        return (self.clock_now - stamp).nanoseconds > STALE_AFTER_NS
+        return is_stale(self.clock_now, stamp)
 
     def on_tf(self, msg):
         if self.clock_now is None:
