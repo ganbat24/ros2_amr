@@ -30,6 +30,7 @@ RUN apt-get update && apt-get install -y \
     python3-pip \
     python3-pytest \
     python3-flake8 \
+    python3-matplotlib \
     ros-jazzy-ament-cmake \
     ros-jazzy-ament-lint \
     ros-jazzy-launch-testing ros-jazzy-launch-testing-ament-cmake \
