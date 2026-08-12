@@ -228,18 +228,20 @@ ros2 run amr_metrics run_validation \
   --out-dir /tmp/amr_validation
 ```
 
-Verified on the amr_office world (10 x 8 m, two doors): **g1 (top-right)
-and g2 (top-left) succeed reliably** — multi-door crossings, final pose
-within 0.25 m. Committed report `docs/validation/metrics_report_g1g2g4.png`
-covers a 141.6 s (sim time) tour with g1 -> g2 -> g4(home); measured:
-odometry drift <= 0.15 m, AMCL localization error < 0.7 m (peaks during
-recovery stalls), heading error < 0.09 rad. Plots are in sim time (from
-/clock). Known limits on the 2-vCPU host: the gz_ros2_control/physics
-bridge needs ~60-90 s to warm up after launch (the readiness gate waits
-for it), and the DWB's path slop can still wedge the robot on long
-diagonal routes — the return leg to g4/home aborted on this run at the
-O1 inflation band ("Start occupied"); corridors are tuned so g1/g2 are
-reliable.
+Verified on the amr_office world (10 x 8 m, two doors): the full
+three-goal tour **g3 (bottom-right) -> g1 (top-right) -> g2 (top-left)
+succeeds 3/3** — every leg crosses at least one door (D1 twice, the W2
+gap into the top-right room), final pose within 0.25 m. Committed report
+`docs/validation/metrics_report_g3g1g2.png` covers a 125.6 s (sim time)
+tour; measured: odometry drift <= 0.15 m, AMCL localization error
+< 0.7 m (peaks during door-squeeze recovery), heading error < 0.09 rad.
+Plots are in sim time (from /clock); the odometry trace is aligned to
+ground truth with the full rigid transform at run start. Known limits on
+the 2-vCPU host: the gz_ros2_control/physics bridge needs ~60-90 s to
+warm up after launch (the readiness gate waits for it), and AMCL can
+occasionally mis-converge at launch (a first goal then aborts with
+"Start occupied" from a phantom pose; re-converges within a minute —
+the tour runner keeps going, and a reset to spawn re-runs cleanly).
 
 ## License
 

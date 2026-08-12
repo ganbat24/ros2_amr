@@ -76,12 +76,16 @@ WALLS = [
     # W1a/W1b: split bottom rooms, door D1 x 4.4..6.9 (2.5 m)
     (0.0, 3.9, 4.4, 4.1, WALL_H),
     (6.9, 3.9, 10.0, 4.1, WALL_H),
-    # W2: split top; spans y 4.1..6.4 only — the y 6.4..8.0 gap (1.6 m) is
+    # W2: split top; spans y 4.1..6.2 only — the y 6.2..8.0 gap (1.6 m) is
     # the door into the top-right room. (A wall spanning to y=8.0 sealed
     # the room against the north wall: G1 was unreachable, "no valid
-    # path" from any start. The original y 4.1..6.0 left the approach
-    # corner (7.7,6.0) so tight the DWB wedged 0.25 m from it.)
-    (7.7, 4.1, 7.9, 6.4, WALL_H),
+    # path" from any start. The end was at y=6.0 under old DWB tuning
+    # (inflation 0.5, lookahead 0.3) and the robot wedged 0.25 m from
+    # the corner; with current tuning (inflation 0.35, lookahead 0.8) a
+    # 1.4 m gap was passable but a periodic replan mid-gap saw the pose
+    # inside the wall-end inflation and aborted the next goal with
+    # "Start occupied", so the gap is reopened to 1.6 m.)
+    (7.7, 4.1, 7.9, 6.2, WALL_H),
 ]
 
 # Obstacle boxes (xmin, ymin, xmax, ymax, height).

@@ -230,19 +230,19 @@
 
     <model name="wall_06">
       <static>true</static>
-      <pose>7.800000 5.250000 0.600000 0 0 0</pose>
+      <pose>7.800000 5.150000 0.600000 0 0 0</pose>
       <link name="link">
         <collision name="collision">
           <geometry>
             <box>
-              <size>0.200000 2.300000 1.200000</size>
+              <size>0.200000 2.100000 1.200000</size>
             </box>
           </geometry>
         </collision>
         <visual name="visual">
           <geometry>
             <box>
-              <size>0.200000 2.300000 1.200000</size>
+              <size>0.200000 2.100000 1.200000</size>
             </box>
           </geometry>
           <material>
