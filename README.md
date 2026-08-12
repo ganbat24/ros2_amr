@@ -95,8 +95,7 @@ colcon build --packages-select amr_control --cmake-args -DCMAKE_BUILD_TYPE=Relea
 # Full stack: Gazebo + control + sensors + AMCL localization + Nav2 (default)
 ros2 launch amr_bringup system.launch.py
 
-# SLAM mapping mode (experimental: slam_toolbox 2.8.5 has an upstream
-# params regression — AMCL is the default until upstream fixes it)
+# SLAM mapping mode (slam_toolbox; lifecycle-managed, verified mapping)
 ros2 launch amr_bringup system.launch.py use_slam:=true
 
 # Headless (server-only) Gazebo, no GUI
@@ -211,10 +210,11 @@ The stack is a **working simulation baseline**: the full pipeline
 (control, sensors, localization, navigation) is verified live in Docker
 on Jazzy + Gazebo Harmonic, with a 104-test suite (0 errors / 0
 failures) run in CI. SLAM Toolbox mapping is selectable via
-`use_slam:=true` but currently pinned to AMCL as the default due to an
-upstream slam_toolbox 2.8.5 params regression. Real-hardware bringup
-(`amr_control/controller_manager.launch.py`) is wired but untested —
-it needs a hardware interface plugin in the URDF.
+`use_slam:=true` (verified: map grows as the robot drives — the 2.8.x
+async node is a lifecycle node and is driven by its own lifecycle
+manager); AMCL with the pre-built map remains the default. Real-hardware
+bringup (`amr_control/controller_manager.launch.py`) is wired but
+untested — it needs a hardware interface plugin in the URDF.
 
 ### Validation (amr_metrics)
 
