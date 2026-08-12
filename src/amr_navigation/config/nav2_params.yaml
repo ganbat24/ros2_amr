@@ -65,7 +65,11 @@ controller_server:
       # obstacle cost meaningful without starving path following.
       BaseObstacle.scale: 0.2
       PathAlign.scale: 32.0
-      GoalAlign.scale: 24.0
+      # Goal critics at 24 were almost as strong as the path critics (32):
+      # near the path's east turn under W1a, the goal pull (north) won and
+      # the robot cut the corner into the wall's inflation ("Start
+      # occupied"). 6.0 keeps the goal relevant only near the goal.
+      GoalAlign.scale: 6.0
       # Look further ahead along the path so corner cutting into obstacle
       # inflation is penalized (0.1 m let the robot drift into walls/O1;
       # 0.3 m still oscillated across the path near the D1 door — the
@@ -74,7 +78,8 @@ controller_server:
       PathAlign.forward_point_distance: 0.8
       GoalAlign.forward_point_distance: 0.8
       PathDist.scale: 32.0
-      GoalDist.scale: 24.0
+      # see GoalAlign.scale note above
+      GoalDist.scale: 6.0
       RotateToGoal.scale: 32.0
       RotateToGoal.slowing_factor: 5.0
       RotateToGoal.lookahead_time: -1.0
@@ -92,7 +97,11 @@ planner_server:
       max_iterations: -1
       max_on_approach_iterations: 1000
       max_planning_time: 2.0
-      cost_travel_multiplier: 2.0
+      # 2.0 let the path hug inflated cells around obstacle corners
+      # (0.3 m from O1's west face, inside the 0.35 m inflation) — the
+      # DWB's cross-track slop then wedged the robot into the lethal
+      # zone. 4.0 pushes the path toward clear cells.
+      cost_travel_multiplier: 4.0
 
 smoother_server:
   ros__parameters:
