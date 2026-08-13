@@ -21,7 +21,6 @@
 
 ## External Dependencies
 
-- `nav2_bringup`
 - `nav2_bt_navigator`
 - `nav2_controller`
 - `nav2_planner`

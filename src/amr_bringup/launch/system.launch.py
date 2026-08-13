@@ -41,15 +41,21 @@ def generate_launch_description():
     amr_navigation_pkg = FindPackageShare('amr_navigation').find(
         'amr_navigation'
     )
-    nav2_bringup_pkg = FindPackageShare('nav2_bringup').find('nav2_bringup')
+    # nav2_bringup ships no behavior_trees/ dir in this nav2 release; the
+    # default tree lives in nav2_bt_navigator's own share dir (see
+    # amr_navigation/launch/navigation.launch.py for the parameter-name
+    # side of this).
+    nav2_bt_navigator_pkg = FindPackageShare('nav2_bt_navigator').find(
+        'nav2_bt_navigator'
+    )
 
     default_nav_params = os.path.join(
         amr_navigation_pkg, 'config', 'nav2_params.yaml'
     )
     default_bt_xml_path = os.path.join(
-        nav2_bringup_pkg,
+        nav2_bt_navigator_pkg,
         'behavior_trees',
-        'navigate_w_replanning_and_recovery.xml',
+        'navigate_to_pose_w_replanning_and_recovery.xml',
     )
 
     use_sim_time = LaunchConfiguration('use_sim_time')

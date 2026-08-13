@@ -15,6 +15,7 @@
   <depend>amr_simulation</depend>
   <depend>amr_localization</depend>
   <depend>amr_navigation</depend>
+  <depend>nav2_bt_navigator</depend>
   <depend>launch</depend>
   <depend>launch_ros</depend>
 

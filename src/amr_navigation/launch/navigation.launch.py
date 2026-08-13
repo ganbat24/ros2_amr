@@ -25,15 +25,23 @@ def generate_launch_description():
     amr_navigation_pkg = FindPackageShare('amr_navigation').find(
         'amr_navigation'
     )
-    nav2_bringup_pkg = FindPackageShare('nav2_bringup').find('nav2_bringup')
+    # bt_navigator's plugin-based navigators each declare their own BT
+    # XML param (default_nav_to_pose_bt_xml / default_nav_through_poses_
+    # bt_xml) — nav2_bringup no longer ships a behavior_trees/ dir at
+    # all in this nav2 release, and there is no generic
+    # default_bt_xml_filename param anymore either. The default tree
+    # lives in nav2_bt_navigator's own share dir.
+    nav2_bt_navigator_pkg = FindPackageShare('nav2_bt_navigator').find(
+        'nav2_bt_navigator'
+    )
 
     default_nav_params = os.path.join(
         amr_navigation_pkg, 'config', 'nav2_params.yaml'
     )
     default_bt_xml_path = os.path.join(
-        nav2_bringup_pkg,
+        nav2_bt_navigator_pkg,
         'behavior_trees',
-        'navigate_w_replanning_and_recovery.xml',
+        'navigate_to_pose_w_replanning_and_recovery.xml',
     )
 
     use_sim_time = LaunchConfiguration('use_sim_time')
@@ -47,7 +55,7 @@ def generate_launch_description():
         root_key='',
         param_rewrites={
             'use_sim_time': use_sim_time,
-            'default_bt_xml_filename': bt_xml_filename,
+            'default_nav_to_pose_bt_xml': bt_xml_filename,
         },
         convert_types=True,
     )
