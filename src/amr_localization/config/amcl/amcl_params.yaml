@@ -43,16 +43,17 @@ amcl:
     z_short: 0.05
     sigma_hit: 0.2
     lambda_short: 0.1
-    odom_model_type: diff
-    initial_cov_xx: 0.25
-    initial_cov_yy: 0.25
-    initial_cov_aa: 0.0685
     # AMCL's initial-pose params are set_initial_pose (bool) + the nested
     # initial_pose.{x,y,z,yaw} block — the long-standing API (predates
     # Galactic). Flat keys like initial_pose_x are never declared and are
     # silently ignored. AMCL only uses the params when set_initial_pose is
     # true — otherwise it warns "cannot publish a pose" and stays silent
     # until an /initialpose arrives.
+    #
+    # There is no initial-covariance parameter: nav2_amcl declares none, so
+    # initial_cov_xx/yy/aa (ROS 1 names) were silently dropped at load. The
+    # initial spread comes from the /initialpose message's covariance, or
+    # from the filter's own defaults. Don't re-add them.
     set_initial_pose: true
     initial_pose:
       x: 0.0
@@ -66,7 +67,8 @@ amcl:
     recovery_alpha_fast: 0.0
     recovery_alpha_slow: 0.0
     robot_model_type: "nav2_amcl::DifferentialMotionModel"
+    # scan_topic and map_topic are declared; there is no odom_topic — AMCL
+    # takes odometry from TF (odom -> base_frame_id), not from a topic.
     scan_topic: /scan
     map_topic: /map
-    odom_topic: /odom
     transform_tolerance: 0.3
