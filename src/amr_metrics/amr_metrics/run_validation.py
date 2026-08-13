@@ -103,23 +103,45 @@ def probe_ready(gate, retries, retry_wait):
     return False
 
 
+_KILL_PATTERNS = [
+    'ros2 launch', 'g[z] sim', 'gz_ros2_control', 'robot_state_publisher',
+    'spawner', 'static_transform', 'diff_drive', 'joint_state',
+    'scan_restamp.py', 'tf_restamp.py', 'ekf_node', 'nav2_amcl', 'amcl',
+    'map_server', 'controller_server', 'planner_server', 'smoother_server',
+    'behavior_server', 'bt_navigator', 'velocity_smoother',
+    'collision_monitor', 'waypoint_follower', 'lifecycle_manager',
+    'parameter_bridge', 'twist_to_stamped.py',
+]
+
+
 def relaunch_stack():
     """Kill and relaunch the full stack (headless); block until it has had
     time to come up.
 
-    The gz_ros2_control/physics bridge intermittently fails to warm up on
-    this constrained host (2 vCPU + software rendering): the odom feedback
-    stays frozen and the nav lifecycle aborts. A stack relaunch is the
-    reliable recovery.
+    The gz_ros2_control/physics bridge intermittently fails to warm up under
+    load: the odom feedback stays frozen and the nav lifecycle aborts. A
+    stack relaunch is the reliable recovery.
+
+    Two things this needs beyond a plain pkill:
+    - Killing by process-name pattern individually, not just "ros2 launch"/
+      "gz sim" — plain executable names like planner_server or amcl don't
+      match either pattern and survive as orphans, and a `ros2 launch`
+      subprocess tree doesn't reliably SIGTERM its whole tree on `pkill -f`.
+    - Clearing stale FastRTPS shared-memory segments from /dev/shm. A killed
+      DDS participant doesn't clean these up; on the next launch, new
+      participants (observed: map_server) fail to bind their SHM port and
+      never come up as a discoverable node at all.
     """
     print('  drive chain never became ready — relaunching stack', flush=True)
+    install_dir = os.environ.get('COLCON_PREFIX_PATH', '').split(os.pathsep)[0]
+    kill_cmd = '; '.join('pkill -9 -f "%s" 2>/dev/null' % p for p in _KILL_PATTERNS)
     subprocess.run(['bash', '-lc',
-            'pkill -f "system.launch" 2>/dev/null; pkill -f "ros2 launch" 2>/dev/null; '
-            'pkill -f "g[z] sim" 2>/dev/null; sleep 3; '
+            kill_cmd + '; sleep 3; '
+            'rm -f /dev/shm/fastrtps_* /dev/shm/sem.fastrtps_* 2>/dev/null; '
             'nohup bash -lc \'source /opt/ros/jazzy/setup.bash && '
-            'source /ros2_ws/install/setup.bash && '
+            'source "%s/setup.bash" && '
             'ros2 launch amr_bringup system.launch.py headless:=true > /tmp/launch.log 2>&1\' '
-            '>/dev/null 2>&1 &'])
+            '>/dev/null 2>&1 &' % install_dir])
     time.sleep(150)
 
 
