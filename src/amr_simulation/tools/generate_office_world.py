@@ -116,12 +116,14 @@ _SDF_TEMPLATE = """<?xml version="1.0"?>
   <world name="amr_office">
     <physics type="dart">
       <max_step_size>0.01</max_step_size>
-      <!-- RTF 0.5: on this 2-vCPU + software-rendering host the physics
-           outruns AMCL/costmaps at 1.0, producing TF-vs-scan timestamp
-           skew that smears obstacle transforms around a turning robot
-           (localization bias, "Start occupied", DWB no-legal-trajectory).
-           Slowing the sim lets the perception stack keep up. -->
-      <real_time_factor>0.5</real_time_factor>
+      <!-- RTF was 0.5 on the project's original 2-vCPU + software-rendering
+           host: the physics outran AMCL/costmaps at 1.0, producing TF-vs-scan
+           timestamp skew that smeared obstacle transforms around a turning
+           robot (localization bias, "Start occupied", DWB no-legal-trajectory).
+           On the 12-core WSL2 host the perception stack keeps up: 1.0
+           measured better than 0.5 across repeated tours (2026-08-13).
+           Restore 0.5 when running on a constrained host. -->
+      <real_time_factor>1.0</real_time_factor>
     </physics>
     <gravity>0 0 -9.81</gravity>
 
