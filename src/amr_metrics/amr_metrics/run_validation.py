@@ -31,6 +31,26 @@ GOAL_POSES = {
 }
 
 
+def cancel_active_goal():
+    """Cancel any in-flight navigate_to_pose goal server-side.
+
+    `timeout N ros2 action send_goal ...` only SIGTERMs the CLI client on
+    expiry — it does not cancel the goal on the action server, so bt_navigator
+    keeps executing it in the background. That stale goal then gets silently
+    preempted by whichever goal we send next, contaminating that goal's start
+    position/costmap state with leftover motion from the "timed out" one.
+    An empty CancelGoal request cancels all active goals on the server.
+    """
+    try:
+        subprocess.run(
+            ['bash', '-lc',
+             'ros2 service call /navigate_to_pose/_action/cancel_goal '
+             'action_msgs/srv/CancelGoal "{}"'],
+            capture_output=True, text=True, timeout=10)
+    except subprocess.TimeoutExpired:
+        pass
+
+
 def send_goal(x, y, timeout_s):
     """Send a navigate_to_pose goal; return (status, wall_time)."""
     cmd = (
@@ -47,7 +67,27 @@ def send_goal(x, y, timeout_s):
         return 'SUCCEEDED', wall
     if 'ABORTED' in full:
         return 'ABORTED', wall
+    # UNKNOWN means the CLI was killed by `timeout` (or errored) before a
+    # terminal status came back — the goal may still be executing server-side.
+    cancel_active_goal()
     return 'UNKNOWN', wall
+
+
+def settle():
+    """Give the stack a beat before the next goal.
+
+    Dispatching the next goal immediately after an ABORTED result was
+    observed sending the new goal into a robot/BT that hadn't actually
+    settled yet (still mid-recovery-behavior) — that goal then aborts almost
+    instantly, which looks like a nav failure but is really a dispatch-timing
+    artifact. (Tried also issuing an explicit clear-costmap service call here;
+    dropped it — under load the request can sit in the node's callback queue
+    for 20+ seconds behind a backlog from the goal that just finished, and it
+    lands *after* the next goal's own planning call, adding to exactly the
+    server-side congestion that causes bt_navigator's "timed out waiting for
+    action server to acknowledge" abort. A plain wait avoids adding load.)
+    """
+    time.sleep(15)
 
 
 def probe_ready(gate, retries, retry_wait):
@@ -128,7 +168,7 @@ def main():
         status, wall = send_goal(x, y, args.per_goal_timeout)
         results[g] = (status, wall)
         print('     %s in %.0f s wall' % (status, wall), flush=True)
-        time.sleep(3)
+        settle()
 
     rec.terminate()
     rec.wait(timeout=10)
