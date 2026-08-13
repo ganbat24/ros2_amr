@@ -38,7 +38,9 @@ class PoseParser:
 
     def start(self):
         env = dict(os.environ)
-        env['GZ_IP'] = '127.0.0.1'
+        # Respect an existing GZ_IP (e.g. set by the launch stack for a
+        # non-loopback gz_ip); only default to loopback if unset.
+        env.setdefault('GZ_IP', '127.0.0.1')
         self.proc = subprocess.Popen(
             ['gz', 'topic', '-e', '-t', self.topic],
             stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
