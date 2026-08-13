@@ -149,7 +149,15 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--out-dir', default='/tmp/amr_validation')
     ap.add_argument('--goals', default='g1_top_right,g2_top_left,g3_bottom_right,g4_home')
-    ap.add_argument('--per-goal-timeout', type=float, default=280.0)
+    # 280.0 clipped at least one goal that eventually succeeded ~288 s in a
+    # comparable attempt, so the harness gets headroom here. Raising it to
+    # 400.0 was then measured on WSL2 and changed NOTHING: g1 ran the full
+    # extended budget and still failed. That is the useful result — the
+    # remaining failures are genuine stalls/oscillation, not slow-but-
+    # progressing goals, so no timeout value rescues them. Keep the headroom
+    # so the harness never mislabels a progressing goal, and look elsewhere
+    # (sensor timing, DWB/costmap) for the actual failure.
+    ap.add_argument('--per-goal-timeout', type=float, default=400.0)
     ap.add_argument('--record-duration', type=float, default=1500.0)
     ap.add_argument('--no-plot', action='store_true')
     ap.add_argument('--relaunch-attempts', type=int, default=2)
