@@ -22,7 +22,7 @@ its own lifecycle_manager with autostart.
 import os
 
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument
+from launch.actions import DeclareLaunchArgument, TimerAction
 from launch.conditions import IfCondition, UnlessCondition
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
@@ -123,39 +123,60 @@ def generate_launch_description():
 
     # map_server and amcl are lifecycle nodes: configure + activate them
     # only in AMCL mode (in SLAM mode they are not launched).
-    lifecycle_manager = Node(
-        package='nav2_lifecycle_manager',
-        executable='lifecycle_manager',
-        name='lifecycle_manager_localization',
-        output='screen',
-        parameters=[
-            {
-                'use_sim_time': use_sim_time,
-                'autostart': True,
-                'node_names': ['map_server', 'amcl'],
-            }
+    #
+    # Delayed the same way as amr_navigation's lifecycle_manager: a
+    # lifecycle_manager whose service clients get created during the
+    # 40+ node launch storm can have its configure() call hang forever
+    # waiting on DDS discovery of map_server/amcl's lifecycle services
+    # (observed live: "Configuring map_server" logged, but map_server
+    # itself never logs "Configuring" — the transition call never
+    # arrives). Nothing times this out on its own, so the whole nav2
+    # bring-up then aborts downstream waiting on a "map" TF that never
+    # appears. A 60 s delay lets discovery settle first.
+    lifecycle_manager = TimerAction(
+        period=60.0,
+        actions=[
+            Node(
+                package='nav2_lifecycle_manager',
+                executable='lifecycle_manager',
+                name='lifecycle_manager_localization',
+                output='screen',
+                parameters=[
+                    {
+                        'use_sim_time': use_sim_time,
+                        'autostart': True,
+                        'node_names': ['map_server', 'amcl'],
+                    }
+                ],
+                condition=UnlessCondition(use_slam),
+            )
         ],
-        condition=UnlessCondition(use_slam),
     )
 
     # slam_toolbox 2.8.x's async node is a LIFECYCLE node: without
     # configure+activate it subscribes to nothing and publishes no map
     # (it sat unconfigured with zero output — misdiagnosed earlier as an
     # upstream params regression). Drive it with a lifecycle manager in
-    # SLAM mode, mirroring the AMCL pattern.
-    lifecycle_manager_slam = Node(
-        package='nav2_lifecycle_manager',
-        executable='lifecycle_manager',
-        name='lifecycle_manager_slam',
-        output='screen',
-        parameters=[
-            {
-                'use_sim_time': use_sim_time,
-                'autostart': True,
-                'node_names': ['slam_toolbox'],
-            }
+    # SLAM mode, mirroring the AMCL pattern (same discovery-storm delay
+    # as above).
+    lifecycle_manager_slam = TimerAction(
+        period=60.0,
+        actions=[
+            Node(
+                package='nav2_lifecycle_manager',
+                executable='lifecycle_manager',
+                name='lifecycle_manager_slam',
+                output='screen',
+                parameters=[
+                    {
+                        'use_sim_time': use_sim_time,
+                        'autostart': True,
+                        'node_names': ['slam_toolbox'],
+                    }
+                ],
+                condition=IfCondition(use_slam),
+            )
         ],
-        condition=IfCondition(use_slam),
     )
 
     return LaunchDescription(
