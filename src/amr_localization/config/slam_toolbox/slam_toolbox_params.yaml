@@ -2,24 +2,32 @@ slam_toolbox:
   ros__parameters:
     use_sim_time: true
     mode: mapping
-    map_start_pose: {x: 0.0, y: 0.0, z: 0.0, yaw: 0.0}
+
+    # Frames. slam_toolbox takes odometry from TF (odom_frame -> base_frame),
+    # not from a topic: there is no odom_topic/imu_topic parameter, and the
+    # ones that used to be here were silently ignored at load.
     base_frame: base_link
     odom_frame: odom
     map_frame: map
     scan_topic: /scan
-    odom_topic: /odom
-    imu_topic: /imu/data
-    throttle_scan_max_rate: 30
-    transform_publish_period: 0.02
-    resolution: 0.05
-    max_laser_range: 8.0
-    minimum_time_interval: 0.5
+    # scan_queue_size is the real name (default 1). The map topic is fixed —
+    # remap it in the launch file if it ever needs to move.
+    scan_queue_size: 5
     transform_timeout: 0.2
+
+    resolution: 0.05
+    minimum_time_interval: 0.5
     stack_size_to_use: 40000000
-    solver_optimization_iterations: 5
+    debug_logging: false
+
+    # Scan matching / correlation
     correlation_search_space_dimension: 0.2
     correlation_search_space_resolution: 0.01
     correlation_search_space_smear_deviation: 0.1
+    scan_buffer_size: 10
+    scan_buffer_maximum_scan_distance: 0.5
+
+    # Loop closure
     loop_search_space_dimension: 8.0
     loop_search_space_resolution: 0.05
     loop_search_space_smear_deviation: 0.03
@@ -27,16 +35,6 @@ slam_toolbox:
     loop_match_maximum_variance_coarse: 3.0
     loop_match_minimum_response_coarse: 0.35
     loop_match_minimum_response_fine: 0.45
-    scan_buffer_size: 10
-    scan_buffer_maximum_scan_distance: 0.5
     link_match_minimum_response_fine: 0.1
-    link_scan_maximum_range: 12.0
-    loop_closure_pose_variance: 0.005
-    loop_closure_velocity_constraint_factor: 10.0
-    scan_range_variance: 0.5
-    debug_logging: false
-    map_topic: /map
-    pose_graph_topic: /slam_toolbox/graph_pose
-    scan_subscriber_queue_size: 5
-    odom_subscriber_queue_size: 5
-    imu_subscriber_queue_size: 5
+    # link_scan_maximum_distance is the real name (was link_scan_maximum_range).
+    link_scan_maximum_distance: 12.0
