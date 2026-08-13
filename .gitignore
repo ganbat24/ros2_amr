@@ -2,6 +2,11 @@
 build/
 install/
 log/
+# colcon's ament_python task writes console_scripts wrappers into the
+# source package's own lib/ dir on this toolchain (colcon-core + newer
+# setuptools resolve --install-scripts relative to cwd instead of the
+# install prefix) instead of install/<pkg>/lib/<pkg>/ where they belong.
+src/amr_metrics/lib/
 
 # Python artifacts
 __pycache__/
