@@ -32,7 +32,15 @@ controller_server:
     progress_checker:
       plugin: "nav2_controller::SimpleProgressChecker"
       required_movement_radius: 0.5
-      movement_time_allowance: 10.0
+      # 10.0 was tuned on the 2-vCPU host; on live WSL2 runs the robot was
+      # observed oscillating/slow-progressing near the W2 door corner while
+      # spin/backup/wait recoveries each "completed successfully" without
+      # resolving the stall — the checker was firing before those recoveries
+      # got a real chance to help. 20.0 gives more slack before declaring
+      # failure and entering another recovery cycle. Observed harmless, but
+      # it did not by itself convert any failing goal — do not credit it
+      # with more than it earned.
+      movement_time_allowance: 20.0
     goal_checker:
       plugin: "nav2_controller::SimpleGoalChecker"
       xy_goal_tolerance: 0.25
@@ -72,6 +80,9 @@ controller_server:
       # 0.05 made the obstacle critic nearly inert: the robot hugged
       # O1/wall inflation because path critics dominated. 0.2 keeps
       # obstacle cost meaningful without starving path following.
+      # (Tried 0.4 on WSL2 chasing a door-corner wedging failure; a single
+      # tour showed no measurable improvement over 0.2, so reverted rather
+      # than keep an unproven deviation from this carefully-tuned baseline.)
       BaseObstacle.scale: 0.2
       PathAlign.scale: 32.0
       # Goal critics at 24 were almost as strong as the path critics (32):
@@ -110,7 +121,15 @@ planner_server:
       # (0.3 m from O1's west face, inside the 0.35 m inflation) — the
       # DWB's cross-track slop then wedged the robot into the lethal
       # zone. 4.0 pushes the path toward clear cells.
-      cost_travel_multiplier: 4.0
+      # On WSL2, live runs showed the planner replanning every ~1s and
+      # flip-flopping between two path solutions near the D1/W2 door
+      # corners — consistent with two routes sitting at close to equal
+      # cost so a small change in start pose or costmap noise between
+      # replans tips A* to the other one each time. 6.0 breaks that tie
+      # harder. Evidence is WEAK — a single-tour positive signal, not a
+      # repeated measurement; revisit under a proper multi-run campaign
+      # before treating 6.0 as established.
+      cost_travel_multiplier: 6.0
 
 smoother_server:
   ros__parameters:
