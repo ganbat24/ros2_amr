@@ -50,16 +50,8 @@ def send_goal(x, y, timeout_s):
     return 'UNKNOWN', wall
 
 
-def wait_ready(gate, retries, retry_wait):
-    """Probe the drive chain; optionally relaunch the stack on repeated failure.
-
-    The gz_ros2_control/physics bridge intermittently fails to warm up on
-    this constrained host (2 vCPU + software rendering): the odom feedback
-    stays frozen and the nav lifecycle aborts. A stack relaunch is the
-    reliable recovery.
-    """
-    import subprocess as sp
-    import time as _t
+def probe_ready(gate, retries, retry_wait):
+    """Probe the drive chain; return True once odom shows real motion."""
     for i in range(retries):
         d = gate.probe()
         print('  probe %d: odom moved %.3f m' % (i + 1, d), flush=True)
@@ -67,17 +59,28 @@ def wait_ready(gate, retries, retry_wait):
             return True
         if i < retries - 1:
             print('  not ready; waiting %.0f s' % retry_wait, flush=True)
-            _t.sleep(retry_wait)
+            time.sleep(retry_wait)
+    return False
+
+
+def relaunch_stack():
+    """Kill and relaunch the full stack (headless); block until it has had
+    time to come up.
+
+    The gz_ros2_control/physics bridge intermittently fails to warm up on
+    this constrained host (2 vCPU + software rendering): the odom feedback
+    stays frozen and the nav lifecycle aborts. A stack relaunch is the
+    reliable recovery.
+    """
     print('  drive chain never became ready — relaunching stack', flush=True)
-    sp.run(['bash', '-lc',
+    subprocess.run(['bash', '-lc',
             'pkill -f "system.launch" 2>/dev/null; pkill -f "ros2 launch" 2>/dev/null; '
             'pkill -f "g[z] sim" 2>/dev/null; sleep 3; '
             'nohup bash -lc \'source /opt/ros/jazzy/setup.bash && '
             'source /ros2_ws/install/setup.bash && '
             'ros2 launch amr_bringup system.launch.py headless:=true > /tmp/launch.log 2>&1\' '
             '>/dev/null 2>&1 &'])
-    _t.sleep(150)
-    return False
+    time.sleep(150)
 
 
 def main():
@@ -94,13 +97,13 @@ def main():
     print('== drive-chain readiness gate ==')
     rclpy.init()
     gate = Gate()
-    ok = False
-    for attempt in range(1 + args.relaunch_attempts):
-        if wait_ready(gate, 5, 30):
-            ok = True
+    ok = probe_ready(gate, 5, 30)
+    for attempt in range(args.relaunch_attempts):
+        if ok:
             break
-        if attempt < args.relaunch_attempts:
-            print('== relaunch attempt %d ==' % (attempt + 1), flush=True)
+        print('== relaunch attempt %d ==' % (attempt + 1), flush=True)
+        relaunch_stack()
+        ok = probe_ready(gate, 5, 30)
     gate.destroy_node()
     rclpy.shutdown()
     if not ok:
