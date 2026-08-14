@@ -20,7 +20,6 @@ services:
       - DISPLAY=${DISPLAY:-:0}
       - XAUTHORITY=/tmp/.docker.xauth
       - QT_X11_NO_MITSHM=1
-      - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
       - GZ_SIM_RESOURCE_PATH=/ros2_ws/install/amr_simulation/share/amr_simulation
       - AMR_GZ_HEADLESS=${AMR_GZ_HEADLESS:-false}
     volumes:
@@ -50,7 +49,6 @@ services:
       - DISPLAY=${DISPLAY:-:0}
       - XAUTHORITY=/tmp/.docker.xauth
       - QT_X11_NO_MITSHM=1
-      - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
     volumes:
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
       - ${XAUTHORITY:-/tmp/.docker.xauth}:/tmp/.docker.xauth:rw
@@ -74,7 +72,6 @@ services:
     image: amr-ws:jazzy
     container_name: amr_teleop
     environment:
-      - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
     network_mode: host
     ipc: host
     stdin_open: true

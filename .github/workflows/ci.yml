@@ -69,30 +69,6 @@ jobs:
           ccache --max-size=1G
           echo "CCACHE_DIR=$HOME/.ccache" >> "$GITHUB_ENV"
 
-      - name: Configure CycloneDDS
-        # The full stack spawns 40+ nodes; without a raised participant
-        # index space CycloneDDS exhausts the default and gz_ros2_control
-        # segfaults at the first controller read (nil deref).
-        run: |
-          cat > /etc/cyclonedds.xml <<'EOF'
-          <CycloneDDS xmlns="https://cyclonedds.io/schemas/cyclonedds/1.0">
-            <Domain>
-              <General>
-                <Interfaces>
-                  <NetworkInterface name="eth0"/>
-                </Interfaces>
-                <AllowMulticast>true</AllowMulticast>
-                <EnableMulticastLoopback>true</EnableMulticastLoopback>
-              </General>
-              <Discovery>
-                <ParticipantIndex>auto</ParticipantIndex>
-                <MaxAutoParticipantIndex>200</MaxAutoParticipantIndex>
-              </Discovery>
-            </Domain>
-          </CycloneDDS>
-          EOF
-          echo "CYCLONEDDS_URI=file:///etc/cyclonedds.xml" >> "$GITHUB_ENV"
-
       - name: Overlay gz_ros2_control (jazzy-branch fix)
         # The 1.2.19 binary segfaults at the first controller read
         # (upstream bug); the jazzy branch carries the fix. Build the

@@ -4,10 +4,23 @@ FROM ros:jazzy-ros-base-noble
 SHELL ["/bin/bash", "-lc"]
 ENV DEBIAN_FRONTEND=noninteractive
 ENV ROS_DISTRO=jazzy
-ENV RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
-# 40+ node stacks exhaust CycloneDDS' default participant index space
-# (surfaces as a gz_ros2_control segfault at the first controller read).
-ENV CYCLONEDDS_URI=file:///etc/cyclonedds.xml
+# RMW: the ROS 2 Jazzy default (rmw_fastrtps_cpp) — deliberately not
+# overridden. This image previously forced rmw_cyclonedds_cpp plus a tuned
+# /etc/cyclonedds.xml that raised MaxAutoParticipantIndex, because stale
+# participants from killed launches exhausted Cyclone's auto index space and
+# surfaced as a gz_ros2_control nil-deref at the first controller read.
+#
+# That was a Cyclone-specific leak in a workspace whose validation harness
+# kills launches as a routine recovery step, and it made the container the
+# only environment running that middleware — WSL2, where the simulation
+# actually runs, has always used the FastRTPS default. Standardising on the
+# default removes the failure mode instead of tuning around it, and makes the
+# container, CI and WSL2 genuinely identical.
+#
+# FastRTPS has its own cleanup obligation: a SIGKILLed participant leaves
+# shared-memory segments behind, and a later run can fail to bind. Clear them
+# with `rm -f /dev/shm/fastrtps_* /dev/shm/sem.fastrtps_*` after a hard kill
+# (amr_metrics' relaunch path already does this).
 
 # Gazebo Sim runtime (gz-sim8) ships from the OSRF apt repo; without it
 # the image has no `gz` binary and simulation cannot start. Versions are
@@ -47,7 +60,6 @@ RUN apt-get update && apt-get install -y \
     ros-jazzy-ros-gz-bridge \
     ros-jazzy-ros-gz-image \
     ros-jazzy-ros-gz-sim \
-    ros-jazzy-rmw-cyclonedds-cpp \
     ros-jazzy-sensor-msgs \
     ros-jazzy-geometry-msgs \
     ros-jazzy-tf2-ros \
@@ -102,9 +114,6 @@ RUN . /opt/ros/${ROS_DISTRO}/setup.sh \
 # Source the workspace by default
 COPY ./docker/entrypoint.sh /ros_entrypoint.sh
 RUN chmod +x /ros_entrypoint.sh
-
-# CycloneDDS discovery tuning (see docker/cyclonedds.xml)
-COPY ./docker/cyclonedds.xml /etc/cyclonedds.xml
 
 ENTRYPOINT ["/ros_entrypoint.sh"]
 CMD ["bash"]
