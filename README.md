@@ -237,20 +237,23 @@ four-goal tour succeeds 4/4** — g1 top-right, g2 top-left, g3
 bottom-right, g4 home — every leg crossing at least one door (D1 and the
 W2 gap into the top-right room), each final pose within 0.25 m.
 
-| goal | wall time |
+Repeatable: **three consecutive tours, 12/12 goals**, no aborts.
+
+| goal | wall time (3 runs) |
 |---|---|
-| g1 top-right | 83 s |
-| g2 top-left | 60 s |
-| g3 bottom-right | 94 s |
-| g4 home | 84 s |
+| g1 top-right | 78 / 84 / 82 s |
+| g2 top-left | 56 / 58 / 59 s |
+| g3 bottom-right | 159 / 150 / 154 s |
+| g4 home | 71 / 120 / 75 s |
 
 Committed report `docs/validation/metrics_report_full_tour.png` covers a
-207 s (sim time) tour on a 12-core WSL2 host at real-time factor 1.0.
-Measured over the run: AMCL localization error median **0.071 m**
-(p95 0.140 m, max 0.202 m, **0.0%** of samples above 0.3 m), average
-speed 10.1 cm/s over 38.6 m travelled. Plots are in sim time (from
-`/clock`); the odometry trace is aligned to ground truth with the full
-rigid transform at run start.
+240 s (sim time) tour on a 12-core WSL2 host. Measured over the run:
+AMCL localization error median **0.063 m** (p95 0.138 m, max 0.182 m,
+**0.0%** of samples above 0.3 m) over 36.6 m travelled. Plots are in sim
+time (from `/clock`); the odometry trace is aligned to ground truth with
+the full rigid transform at run start. `environment.json` beside the
+report records the host, core count, middleware, Gazebo build,
+real-time factor and git SHA the run was produced on.
 
 The tour is gated on drive-chain readiness: the gz_ros2_control bridge
 needs a warm-up after launch, and `orchestrate` probes odometry until it

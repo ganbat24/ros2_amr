@@ -1,0 +1,19 @@
+{
+  "timestamp": "2026-08-14T07:35:15+0100",
+  "host": "wsl2",
+  "cores": 12,
+  "kernel": "6.18.33.2-microsoft-standard-WSL2",
+  "is_wsl": true,
+  "in_container": false,
+  "ros_distro": "jazzy",
+  "rmw": "<default>",
+  "ros_domain_id": "92",
+  "gz_version": "8.11.0",
+  "gz_binary": "/opt/ros/jazzy/opt/gz_tools_vendor/bin/gz",
+  "libgl_always_software": "",
+  "git_sha": "6b0432fab22725a1256384f69e7aa8120e226f9f",
+  "real_time_factor": "1.0",
+  "restampers_running": [
+    "python3 /home/ganbat/ros2_amr/install/amr_localization/lib/amr_localization/tf_restamp.py --ros-args -r __node:=tf_restamper --params-file /tmp/launch_params_s402zjny"
+  ]
+}
