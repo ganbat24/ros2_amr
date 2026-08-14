@@ -22,8 +22,13 @@ its own lifecycle_manager with autostart.
 import os
 
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, TimerAction
+from launch.actions import (
+    DeclareLaunchArgument,
+    RegisterEventHandler,
+    TimerAction,
+)
 from launch.conditions import IfCondition, UnlessCondition
+from launch.event_handlers import OnProcessStart
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
@@ -70,12 +75,15 @@ def generate_launch_description():
     # controller's clock (inside gz_ros_control) lags /clock by seconds and
     # drifts, which otherwise makes AMCL/Nav2 drop everything against the
     # TF cache ("earlier than all the data").
+    # Switchable so its necessity can be measured rather than assumed —
+    # see the note on the scan restamper in amr_sensors' sensors.launch.py.
     tf_restamper_node = Node(
         package='amr_localization',
         executable='tf_restamp.py',
         name='tf_restamper',
         output='log',
         parameters=[{'use_sim_time': use_sim_time}],
+        condition=IfCondition(LaunchConfiguration('use_tf_restamp')),
     )
 
     slam_toolbox_node = Node(
@@ -124,59 +132,77 @@ def generate_launch_description():
     # map_server and amcl are lifecycle nodes: configure + activate them
     # only in AMCL mode (in SLAM mode they are not launched).
     #
-    # Delayed the same way as amr_navigation's lifecycle_manager: a
-    # lifecycle_manager whose service clients get created during the
-    # 40+ node launch storm can have its configure() call hang forever
-    # waiting on DDS discovery of map_server/amcl's lifecycle services
-    # (observed live: "Configuring map_server" logged, but map_server
-    # itself never logs "Configuring" — the transition call never
-    # arrives). Nothing times this out on its own, so the whole nav2
-    # bring-up then aborts downstream waiting on a "map" TF that never
-    # appears. A 60 s delay lets discovery settle first.
-    lifecycle_manager = TimerAction(
-        period=60.0,
-        actions=[
-            Node(
-                package='nav2_lifecycle_manager',
-                executable='lifecycle_manager',
-                name='lifecycle_manager_localization',
-                output='screen',
-                parameters=[
-                    {
-                        'use_sim_time': use_sim_time,
-                        'autostart': True,
-                        'node_names': ['map_server', 'amcl'],
-                    }
-                ],
-                condition=UnlessCondition(use_slam),
-            )
-        ],
+    # The manager must not create its service clients during the 40+ node
+    # launch storm. Clients created then can block forever waiting on DDS
+    # discovery of map_server/amcl's lifecycle services (observed live:
+    # "Configuring map_server" logged, but map_server itself never logs
+    # "Configuring" — the transition call never arrives). Nothing times that
+    # out on its own: nav2_lifecycle_manager declares no bound on the initial
+    # wait (verified against libnav2_lifecycle_manager_core.so — only
+    # autostart, node_names, bond_timeout, bond_respawn_max_duration and
+    # attempt_respawn_reconnection), so the whole nav2 bring-up then aborts
+    # downstream waiting on a "map" TF that never appears.
+    #
+    # Previously a flat TimerAction(period=60.0) from launch time, which
+    # encoded one machine's speed as a constant. Trigger on the managed node
+    # actually starting instead, so the settle window tracks the host.
+    lifecycle_manager = RegisterEventHandler(
+        OnProcessStart(
+            target_action=amcl_node,
+            on_start=[
+                TimerAction(
+                    period=LaunchConfiguration('lifecycle_settle'),
+                    actions=[
+                        Node(
+                            package='nav2_lifecycle_manager',
+                            executable='lifecycle_manager',
+                            name='lifecycle_manager_localization',
+                            output='screen',
+                            parameters=[
+                                {
+                                    'use_sim_time': use_sim_time,
+                                    'autostart': True,
+                                    'node_names': ['map_server', 'amcl'],
+                                }
+                            ],
+                        )
+                    ],
+                )
+            ],
+        ),
+        condition=UnlessCondition(use_slam),
     )
 
     # slam_toolbox 2.8.x's async node is a LIFECYCLE node: without
     # configure+activate it subscribes to nothing and publishes no map
     # (it sat unconfigured with zero output — misdiagnosed earlier as an
     # upstream params regression). Drive it with a lifecycle manager in
-    # SLAM mode, mirroring the AMCL pattern (same discovery-storm delay
-    # as above).
-    lifecycle_manager_slam = TimerAction(
-        period=60.0,
-        actions=[
-            Node(
-                package='nav2_lifecycle_manager',
-                executable='lifecycle_manager',
-                name='lifecycle_manager_slam',
-                output='screen',
-                parameters=[
-                    {
-                        'use_sim_time': use_sim_time,
-                        'autostart': True,
-                        'node_names': ['slam_toolbox'],
-                    }
-                ],
-                condition=IfCondition(use_slam),
-            )
-        ],
+    # SLAM mode, mirroring the AMCL pattern above.
+    lifecycle_manager_slam = RegisterEventHandler(
+        OnProcessStart(
+            target_action=slam_toolbox_node,
+            on_start=[
+                TimerAction(
+                    period=LaunchConfiguration('lifecycle_settle'),
+                    actions=[
+                        Node(
+                            package='nav2_lifecycle_manager',
+                            executable='lifecycle_manager',
+                            name='lifecycle_manager_slam',
+                            output='screen',
+                            parameters=[
+                                {
+                                    'use_sim_time': use_sim_time,
+                                    'autostart': True,
+                                    'node_names': ['slam_toolbox'],
+                                }
+                            ],
+                        )
+                    ],
+                )
+            ],
+        ),
+        condition=IfCondition(use_slam),
     )
 
     return LaunchDescription(
@@ -214,6 +240,20 @@ def generate_launch_description():
                 name='initial_yaw',
                 default_value='0.0',
                 description='AMCL initial pose yaw (radians)',
+            ),
+            DeclareLaunchArgument(
+                name='use_tf_restamp',
+                default_value='true',
+                description='Run the odom->base_link TF restamper. Added '
+                'against controller-clock lag on a constrained host; set '
+                'false to measure whether it is still needed.',
+            ),
+            DeclareLaunchArgument(
+                name='lifecycle_settle',
+                default_value='8.0',
+                description='Seconds after the managed node starts before '
+                'the lifecycle manager creates its service clients. Counted '
+                'from node start, not launch, so it tracks host speed.',
             ),
             ekf_node,
             tf_restamper_node,

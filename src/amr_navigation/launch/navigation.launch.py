@@ -14,7 +14,12 @@
 import os
 
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, TimerAction
+from launch.actions import (
+    DeclareLaunchArgument,
+    RegisterEventHandler,
+    TimerAction,
+)
+from launch.event_handlers import OnProcessStart
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
@@ -118,23 +123,41 @@ def generate_launch_description():
         parameters=[{'use_sim_time': use_sim_time}],
     )
 
-    # Start the lifecycle manager AFTER the discovery storm settles: its
-    # service clients created during the 40-node launch storm hang (the
-    # planner_server activation call times out after ~2 min and the manager
-    # aborts bringup, leaving every nav node inactive). A 60 s delay lets
-    # discovery settle on constrained hosts; on fast hosts the nodes are
-    # simply activated a minute later.
-    lifecycle_manager = TimerAction(
-        period=60.0,
-        actions=[
-            Node(
-                package='nav2_lifecycle_manager',
-                executable='lifecycle_manager',
-                name='lifecycle_manager',
-                output='screen',
-                parameters=[nav2_params],
-            )
-        ],
+    # The lifecycle manager must not create its service clients during the
+    # 40-node discovery storm: clients created then can block forever waiting
+    # to discover the managed nodes' lifecycle services (the planner_server
+    # activation call times out after ~2 min and the manager aborts bringup,
+    # leaving every nav node inactive). nav2_lifecycle_manager declares no
+    # parameter that bounds that initial wait — verified against
+    # libnav2_lifecycle_manager_core.so, which declares only autostart,
+    # node_names, bond_timeout, bond_respawn_max_duration and
+    # attempt_respawn_reconnection — so the wait cannot be made to fail fast.
+    #
+    # This used to be a flat TimerAction(period=60.0) counted from launch
+    # time, which assumed a fixed machine speed. Instead, start counting from
+    # the moment the last managed node's process actually starts, so the delay
+    # tracks the host: fast hosts activate seconds after the nodes are up,
+    # slow hosts get proportionally more room without anyone editing a
+    # constant. `lifecycle_settle` remains tunable for pathologically slow
+    # environments.
+    lifecycle_manager_node = Node(
+        package='nav2_lifecycle_manager',
+        executable='lifecycle_manager',
+        name='lifecycle_manager',
+        output='screen',
+        parameters=[nav2_params],
+    )
+
+    lifecycle_manager = RegisterEventHandler(
+        OnProcessStart(
+            target_action=bt_navigator,
+            on_start=[
+                TimerAction(
+                    period=LaunchConfiguration('lifecycle_settle'),
+                    actions=[lifecycle_manager_node],
+                )
+            ],
+        )
     )
 
     return LaunchDescription(
@@ -153,6 +176,14 @@ def generate_launch_description():
                 name='bt_xml_filename',
                 default_value=default_bt_xml_path,
                 description='Behavior tree XML file',
+            ),
+            DeclareLaunchArgument(
+                name='lifecycle_settle',
+                default_value='8.0',
+                description='Seconds to wait after the last managed node '
+                'starts before the lifecycle manager creates its service '
+                'clients. Counted from node start, not from launch, so it '
+                'tracks host speed. Raise it on a pathologically slow host.',
             ),
             controller_server,
             planner_server,
