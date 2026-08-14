@@ -140,6 +140,24 @@ planner_server:
     use_sim_time: true
     planner_plugins: ["GridBased"]
     GridBased:
+      # planner_server logs one ERROR at configure: "Inflation layer either
+      # not found or inflation is not set sufficiently for optimized
+      # non-circular collision checking capabilities". It is benign here, and
+      # this is the measurement rather than the assumption (2026-08-14):
+      #
+      #   inflation_radius | 0.55 | 0.70 | 1.00 | 1.50
+      #   warnings emitted |   1  |   1  |   1  |   1
+      #
+      # Invariant to the value across a 3x sweep, so it is not reporting an
+      # inflation misconfiguration. It fires inside SmacPlanner2D::configure,
+      # ~20 ms after the inflation layer initialises and before the costmap is
+      # activated — the layer has not built its cost cache yet at that point.
+      # The optimisation it refers to is the potential-field shortcut that lets
+      # an SE2 planner skip full-footprint checks; SmacPlanner2D plans for a
+      # circular robot (robot_radius 0.25, footprint empty), so it never uses
+      # that path. Do not raise inflation_radius to silence it — that changes
+      # real navigation behaviour to quiet a message about a code path this
+      # planner does not take.
       plugin: "nav2_smac_planner::SmacPlanner2D"
       tolerance: 0.125
       downsample_costmap: false
