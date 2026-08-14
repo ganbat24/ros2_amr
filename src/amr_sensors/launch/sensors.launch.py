@@ -13,6 +13,7 @@
 # limitations under the License.
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
+from launch.conditions import IfCondition, UnlessCondition
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
@@ -27,6 +28,14 @@ def generate_launch_description():
                 default_value='true',
                 description='Use simulation clock',
             ),
+            DeclareLaunchArgument(
+                name='use_scan_restamp',
+                default_value='false',
+                description='Re-stamp scans at the latest map->odom TF time. '
+                'Default false: measured on WSL2, it corrupts stamps rather '
+                'than repairing them (see the note below). Enable only on a '
+                'host where the raw bridge timestamps are provably stale.',
+            ),
             Node(
                 package='ros_gz_bridge',
                 executable='parameter_bridge',
@@ -34,15 +43,27 @@ def generate_launch_description():
                 output='screen',
                 parameters=[{'use_sim_time': use_sim_time}],
             ),
+            # Scan bridge. Two mutually exclusive forms, because disabling
+            # the restamper must not leave /scan unpublished:
+            #   restamper ON  -> bridge publishes /scan_raw, restamper -> /scan
+            #   restamper OFF -> bridge publishes /scan directly
             Node(
                 package='ros_gz_bridge',
                 executable='parameter_bridge',
-                # gz topic /scan stays /scan on the gz side; the ROS side is
-                # remapped to /scan_raw for the receive-time restamper.
                 arguments=['/scan@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan'],
                 remappings=[('/scan', '/scan_raw')],
                 output='screen',
                 parameters=[{'use_sim_time': use_sim_time}],
+                condition=IfCondition(LaunchConfiguration('use_scan_restamp')),
+            ),
+            Node(
+                package='ros_gz_bridge',
+                executable='parameter_bridge',
+                arguments=['/scan@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan'],
+                output='screen',
+                parameters=[{'use_sim_time': use_sim_time}],
+                condition=UnlessCondition(
+                    LaunchConfiguration('use_scan_restamp')),
             ),
             Node(
                 package='ros_gz_bridge',
@@ -76,16 +97,31 @@ def generate_launch_description():
                 output='screen',
                 parameters=[{'use_sim_time': use_sim_time}],
             ),
-            # Re-stamp scans at receive time: under headless software
-            # rendering the gpu_lidar timestamps lag the physics clock by
-            # seconds, which makes AMCL/SLAM/costmaps drop every scan
-            # against the TF cache. The relay aligns /scan with /odom.
+            # The restamper stamps each scan at the latest map->odom TF
+            # time. It was added because raw gpu_lidar timestamps were
+            # observed lagging the physics clock by seconds on a 2-core host.
+            #
+            # Measured on WSL2 2026-08-14 with `amr_metrics scan_health`, in
+            # one run, both topics side by side:
+            #     /scan_raw (bridge)     0 non-increasing stamps, age +0.020 s
+            #     /scan     (restamped)  128 of 194 non-increasing, age -0.100 s
+            #
+            # So on this host it is not repairing stamps, it is destroying
+            # them. map->odom is published by AMCL and only advances when AMCL
+            # updates, so every scan arriving between two AMCL updates gets
+            # the same timestamp — and tf2 message filters discard repeated
+            # stamps. The shim added to stop AMCL dropping scans was making
+            # AMCL drop scans.
+            #
+            # Default off. Re-enable only after measuring that the raw
+            # timestamps are actually stale on the host in question.
             Node(
                 package='amr_sensors',
                 executable='scan_restamp.py',
                 name='scan_restamper',
                 output='log',
                 parameters=[{'use_sim_time': use_sim_time}],
+                condition=IfCondition(LaunchConfiguration('use_scan_restamp')),
             ),
             # The gz URDF importer attaches all sensors to the model root,
             # so scan/camera messages carry gz-scoped frames that are not

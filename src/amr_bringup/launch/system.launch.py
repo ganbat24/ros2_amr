@@ -109,6 +109,7 @@ def generate_launch_description():
         ),
         launch_arguments={
             'use_sim_time': use_sim_time,
+            'use_scan_restamp': LaunchConfiguration('use_scan_restamp'),
         }.items(),
     )
 
@@ -125,6 +126,7 @@ def generate_launch_description():
             'initial_x': initial_x,
             'initial_y': initial_y,
             'initial_yaw': initial_yaw,
+            'use_tf_restamp': LaunchConfiguration('use_tf_restamp'),
         }.items(),
     )
 
@@ -218,6 +220,22 @@ def generate_launch_description():
                 name='initial_yaw',
                 default_value='0.0',
                 description='AMCL initial pose yaw (radians)',
+            ),
+            # The two restampers exist to paper over clock lag measured on a
+            # 2-core host. Exposed here so a run can turn them off and measure
+            # whether they are still earning their CPU — see the scan_health
+            # tool in amr_metrics.
+            DeclareLaunchArgument(
+                name='use_tf_restamp',
+                default_value='true',
+                description='Run the odom->base_link TF restamper',
+            ),
+            DeclareLaunchArgument(
+                name='use_scan_restamp',
+                default_value='false',
+                description='Re-stamp scans at map->odom TF time. Default '
+                'off: measured to corrupt stamps rather than repair them '
+                '(see amr_sensors/launch/sensors.launch.py).',
             ),
             DeclareLaunchArgument(
                 name='params_file',
