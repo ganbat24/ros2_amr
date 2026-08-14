@@ -25,6 +25,7 @@ setup(
             'run_validation = amr_metrics.run_validation:main',
             'orchestrate = amr_metrics.orchestrate:main',
             'scan_health = amr_metrics.scan_health:main',
+            'motion_health = amr_metrics.motion_health:main',
         ],
     },
 )
