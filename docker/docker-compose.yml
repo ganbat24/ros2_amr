@@ -100,7 +100,6 @@ services:
   teleop:
     image: amr-ws:jazzy
     container_name: amr_teleop
-    environment:
     network_mode: host
     ipc: host
     stdin_open: true
