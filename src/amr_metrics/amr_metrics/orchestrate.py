@@ -264,6 +264,11 @@ def capture_environment(out_dir):
         # precede it.
         'git_dirty': bool(dirty_paths),
         'git_dirty_paths': dirty_paths,
+        # A clean tree is not the whole story: --launch-args can point the
+        # stack at a different params file or flip a feature, and the run
+        # would otherwise record as identical to the baseline it is being
+        # compared against.
+        'launch_args': os.environ.get('AMR_LAUNCH_ARGS', ''),
         'real_time_factor': first_line(
             "grep -o '<real_time_factor>[^<]*' "
             "$(ros2 pkg prefix --share amr_simulation 2>/dev/null)"
@@ -403,6 +408,10 @@ def main():
                 args.campaign]):
         ap.error('nothing to do — pass --tour or --campaign N, or one of '
                  '--teardown/--launch/--wait-ready')
+
+    # Recorded into every environment.json so a variant run is never
+    # indistinguishable from the baseline it is compared against.
+    os.environ['AMR_LAUNCH_ARGS'] = args.launch_args
 
     if args.campaign:
         return run_campaign(args)

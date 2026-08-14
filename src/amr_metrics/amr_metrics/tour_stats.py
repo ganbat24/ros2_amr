@@ -63,6 +63,12 @@ def provenance(runs):
     if len(rtfs) > 1:
         problems.append('runs span different real-time factors (%s)'
                         % ', '.join(sorted(rtfs)))
+    launch_args = {env.get('launch_args', '') for _, _, env in runs if env}
+    if len(launch_args) > 1:
+        problems.append(
+            'runs span different launch arguments (%s) — a clean tree does '
+            'not make these the same configuration'
+            % ' | '.join(sorted(repr(a) for a in launch_args)))
     return (not problems), problems
 
 
