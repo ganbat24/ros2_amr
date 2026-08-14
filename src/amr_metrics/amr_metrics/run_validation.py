@@ -73,20 +73,52 @@ def send_goal(x, y, timeout_s):
     return 'UNKNOWN', wall
 
 
-def settle():
+# Verified present on a live stack (2026-08-14); both are
+# nav2_msgs/srv/ClearEntireCostmap.
+_CLEAR_SERVICES = [
+    '/local_costmap/clear_entirely_local_costmap',
+    '/global_costmap/clear_entirely_global_costmap',
+]
+
+
+def clear_costmaps(timeout_s=8.0):
+    """Clear both costmaps. Best effort — never let this stall a tour."""
+    for service in _CLEAR_SERVICES:
+        try:
+            subprocess.run(
+                ['bash', '-lc',
+                 'timeout %d ros2 service call %s '
+                 'nav2_msgs/srv/ClearEntireCostmap "{}"'
+                 % (int(timeout_s), service)],
+                capture_output=True, text=True, timeout=timeout_s + 4)
+        except subprocess.TimeoutExpired:
+            print('     (costmap clear timed out on %s)' % service, flush=True)
+
+
+def settle(after_failure=False):
     """Give the stack a beat before the next goal.
 
     Dispatching the next goal immediately after an ABORTED result was
-    observed sending the new goal into a robot/BT that hadn't actually
-    settled yet (still mid-recovery-behavior) — that goal then aborts almost
-    instantly, which looks like a nav failure but is really a dispatch-timing
-    artifact. (Tried also issuing an explicit clear-costmap service call here;
-    dropped it — under load the request can sit in the node's callback queue
-    for 20+ seconds behind a backlog from the goal that just finished, and it
-    lands *after* the next goal's own planning call, adding to exactly the
-    server-side congestion that causes bt_navigator's "timed out waiting for
-    action server to acknowledge" abort. A plain wait avoids adding load.)
+    observed sending the new goal into a robot/BT that had not actually
+    settled yet (still mid-recovery-behaviour) — that goal then aborts almost
+    instantly, which looks like a navigation failure but is a dispatch-timing
+    artifact.
+
+    After a FAILED goal we also clear both costmaps. A failed goal tends to
+    leave the robot inside obstacle inflation with stale marks around it, and
+    the next goal then aborts in milliseconds on an invalid start — measured
+    on 2026-08-14, g4 aborting 4 ms after dispatch because g3 had left the
+    robot wedged. That measures the previous failure, not this goal.
+
+    An earlier attempt at clearing costmaps between *every* goal was dropped
+    because the request sat behind a backlog in the node callback queue and
+    landed after the next goal's planning call. Doing it only after failures
+    keeps the added load rare, and the call is bounded so it cannot stall the
+    tour if the queue is congested.
     """
+    if after_failure:
+        print('     clearing costmaps after a failed goal', flush=True)
+        clear_costmaps()
     time.sleep(15)
 
 
@@ -162,7 +194,7 @@ def main():
         status, wall = send_goal(x, y, args.per_goal_timeout)
         results[g] = (status, wall)
         print('     %s in %.0f s wall' % (status, wall), flush=True)
-        settle()
+        settle(after_failure=(status != 'SUCCEEDED'))
 
     rec.terminate()
     rec.wait(timeout=10)

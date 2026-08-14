@@ -45,7 +45,8 @@ def main():
                                           rclpy.Parameter.Type.BOOL, True)])
             self.arrivals = []      # wall time of each message
             self.ages = []          # clock_now - header.stamp, seconds
-            self.stamps = []        # header stamps, seconds
+            self.stamps = []        # header stamps (sim time), seconds
+            self.clock_marks = []   # (wall, sim) for the real-time factor
             self.create_subscription(LaserScan, args.topic, self._on_scan,
                                      qos_profile_sensor_data)
 
@@ -55,6 +56,7 @@ def main():
             self.arrivals.append(time.time())
             self.stamps.append(stamp)
             self.ages.append(now.nanoseconds * 1e-9 - stamp)
+            self.clock_marks.append((time.time(), now.nanoseconds * 1e-9))
 
     rclpy.init()
     node = ScanHealth()
@@ -74,8 +76,27 @@ def main():
         rclpy.shutdown()
         return 1
 
-    gaps = [b - a for a, b in zip(node.arrivals, node.arrivals[1:])]
-    measured_hz = (n - 1) / (node.arrivals[-1] - node.arrivals[0])
+    # Gaps in SIM time, for the same reason the rate is measured there: a
+    # wall-clock gap widens whenever the sim slows down, which is not a
+    # sensor stall.
+    gaps = [b - a for a, b in zip(node.stamps, node.stamps[1:])]
+    wall_gaps = [b - a for a, b in zip(node.arrivals, node.arrivals[1:])]
+    wall_hz = (n - 1) / (node.arrivals[-1] - node.arrivals[0])
+
+    # Under simulation the sensor's nominal rate is a SIM-time rate, and the
+    # sim may not run at real time. Comparing wall-clock arrivals against a
+    # sim-time nominal is apples to oranges — it reports a throughput deficit
+    # that does not exist, because every consumer (AMCL, costmaps, the
+    # controller) is on the same sim clock. Measure the rate in sim time and
+    # report the real-time factor separately.
+    sim_span = node.stamps[-1] - node.stamps[0]
+    measured_hz = (n - 1) / sim_span if sim_span > 0 else wall_hz
+    rtf = None
+    if len(node.clock_marks) > 1:
+        w = node.clock_marks[-1][0] - node.clock_marks[0][0]
+        s = node.clock_marks[-1][1] - node.clock_marks[0][1]
+        if w > 0:
+            rtf = s / w
     median_gap = statistics.median(gaps)
     worst_gap = max(gaps)
     median_age = statistics.median(node.ages)
@@ -87,8 +108,15 @@ def main():
 
     print('\n=== scan pipeline over %.0f s ===' % args.duration)
     print('  messages           %d' % n)
-    print('  measured rate      %.2f Hz' % measured_hz)
-    print('  gap median / worst %.3f s / %.3f s' % (median_gap, worst_gap))
+    print('  rate in SIM time   %.2f Hz   <- compare this against nominal'
+          % measured_hz)
+    print('  rate in WALL time  %.2f Hz' % wall_hz)
+    if rtf is not None:
+        print('  real-time factor   %.3f   (wall rate = sim rate x RTF)' % rtf)
+    print('  gap median / worst %.3f s / %.3f s  (sim time)'
+          % (median_gap, worst_gap))
+    print('  gap median / worst %.3f s / %.3f s  (wall time, RTF-inflated)'
+          % (statistics.median(wall_gaps), max(wall_gaps)))
     print('  age median / worst %.3f s / %.3f s  (clock now - header.stamp)'
           % (median_age, worst_age))
     print('  non-increasing stamps %d' % backwards)
@@ -101,10 +129,17 @@ def main():
               % (expected, ratio * 100))
         if ratio < 0.7:
             verdict.append(
-                'THROUGHPUT: delivering %.0f%% of the nominal rate. The '
-                'sensor pipeline cannot keep up — reduce sensor cost (sample '
-                'count, update rate) or get a working GL driver. Tuning the '
-                'planner will not help.' % (ratio * 100))
+                'THROUGHPUT: delivering %.0f%% of nominal IN SIM TIME. The '
+                'sensor genuinely cannot keep up — reduce sensor cost (sample '
+                'count, update rate) or get a working GL driver.'
+                % (ratio * 100))
+        elif rtf is not None and rtf < 0.8:
+            verdict.append(
+                'The sim runs at %.2f real time, so scans arrive at %.1f Hz '
+                'by the wall clock while delivering the full %.1f Hz in sim '
+                'time. That is not starvation — every sim-time consumer is '
+                'slowed equally. Do not "fix" it by cutting sensor rates.'
+                % (rtf, wall_hz, measured_hz))
 
     # A scan that is old by more than a couple of periods when it arrives is a
     # stamping/latency problem: consumers with a TF tolerance will drop it.
@@ -122,8 +157,8 @@ def main():
 
     if worst_gap > 5 * median_gap:
         verdict.append(
-            'BURSTINESS: worst gap %.2f s vs %.2f s median — the pipeline '
-            'stalls periodically even if the average looks fine.'
+            'BURSTINESS: worst SIM-time gap %.2f s vs %.2f s median — a real '
+            'stall, not an artefact of the sim slowing down.'
             % (worst_gap, median_gap))
 
     print('\n=== verdict ===')
