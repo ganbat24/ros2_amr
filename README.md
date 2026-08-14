@@ -223,26 +223,44 @@ untested — it needs a hardware interface plugin in the URDF.
 error, heading error, speed profile):
 
 ```bash
+# one command: clean teardown, launch, readiness gate, tour, report, teardown
+ros2 run amr_metrics orchestrate --tour --out-dir /tmp/amr_validation
+
+# or, against a stack you brought up yourself
 ros2 run amr_metrics run_validation \
   --goals g1_top_right,g2_top_left,g3_bottom_right,g4_home \
   --out-dir /tmp/amr_validation
 ```
 
-Verified on the amr_office world (10 x 8 m, two doors): the full
-three-goal tour **g3 (bottom-right) -> g1 (top-right) -> g2 (top-left)
-succeeds 3/3** — every leg crosses at least one door (D1 twice, the W2
-gap into the top-right room), final pose within 0.25 m. Committed report
-`docs/validation/metrics_report_g3g1g2.png` covers a 164.4 s (sim time)
-tour; measured: odometry drift <= 0.15 m, AMCL localization error
-median ~0.10 m (max 0.36 m, 0.7% of the run above 0.3 m), heading error
-< 0.09 rad. Plots are in sim time (from /clock); the odometry trace is
-aligned to ground truth with the full rigid transform at run start.
-Known limits on the 2-vCPU host: the gz_ros2_control/physics bridge
-needs ~60-90 s to warm up after launch (the readiness gate waits for
-it), and AMCL can occasionally mis-converge at launch (a first goal then
-aborts with "Start occupied" from a phantom pose; re-converges within a
-minute — the tour runner keeps going, and a reset to spawn re-runs
-cleanly).
+Verified on the amr_office world (10 x 8 m, two doors): the **full
+four-goal tour succeeds 4/4** — g1 top-right, g2 top-left, g3
+bottom-right, g4 home — every leg crossing at least one door (D1 and the
+W2 gap into the top-right room), each final pose within 0.25 m.
+
+| goal | wall time |
+|---|---|
+| g1 top-right | 83 s |
+| g2 top-left | 60 s |
+| g3 bottom-right | 94 s |
+| g4 home | 84 s |
+
+Committed report `docs/validation/metrics_report_full_tour.png` covers a
+207 s (sim time) tour on a 12-core WSL2 host at real-time factor 1.0.
+Measured over the run: AMCL localization error median **0.071 m**
+(p95 0.140 m, max 0.202 m, **0.0%** of samples above 0.3 m), average
+speed 10.1 cm/s over 38.6 m travelled. Plots are in sim time (from
+`/clock`); the odometry trace is aligned to ground truth with the full
+rigid transform at run start.
+
+The tour is gated on drive-chain readiness: the gz_ros2_control bridge
+needs a warm-up after launch, and `orchestrate` probes odometry until it
+responds before dispatching any goal. Bring-up reaches `active` in about
+12 s.
+
+Under software rendering (no GPU passthrough) the LiDAR pipeline
+delivers roughly 67% of its nominal 10 Hz with occasional ~1.5 s stalls.
+The tour passes anyway; `ros2 run amr_metrics scan_health` reports the
+current figure if you need to check it on a given host.
 
 ## License
 
