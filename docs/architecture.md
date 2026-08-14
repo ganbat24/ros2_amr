@@ -14,8 +14,9 @@ amr_ws/
     amr_sensors/           # ros_gz_bridge launch + sensor bridge config
     amr_simulation/        # Gazebo Harmonic world, ros_gz_sim spawn, bridge remappings
     amr_localization/      # EKF, SLAM Toolbox, AMCL launch/config
-    amr_navigation/        # Nav2 params, costmaps, planners, BT, maps
+    amr_navigation/        # Nav2 params, costmaps, planners, BT, waypoints, maps
     amr_bringup/           # Top-level system.launch.py orchestrator
+    amr_metrics/           # Validation tours, campaigns, map scoring, plots
   docs/                    # Architecture docs
   docker/                  # Dockerfile, docker-compose
   .devcontainer/           # VS Code Dev Container
@@ -58,6 +59,7 @@ graph TB
         PLANNER["SMAC 2D Planner"]
         CONTROLLER["DWB Local Planner"]
         BT["bt_navigator"]
+        WP["waypoint_follower"]
     end
 
     subgraph Orchestration["Bringup"]
@@ -73,6 +75,8 @@ graph TB
     SLAM -->|/map + TF map->odom| PLANNER
     AMCL -->|/map + TF map->odom| PLANNER
     COSTMAP --> PLANNER
+    WP -->|/navigate_to_pose per waypoint| BT
+    BT --> PLANNER
     PLANNER --> CONTROLLER
     CONTROLLER -->|/cmd_vel| CTRL
     UP --> Sim
@@ -96,6 +100,34 @@ graph TB
 | `/map` | SLAM Toolbox or `map_server` | Nav2 global costmap |
 | `/tf` map→odom→base_link | SLAM Toolbox or AMCL + EKF | All consumers |
 | `/tf` base_link→sensors | `robot_state_publisher` | All consumers |
+
+---
+
+## Process Layout
+
+The nav2 servers can run either way, chosen at launch with `use_composition`:
+
+| | `use_composition:=false` | `use_composition:=true` |
+|---|---|---|
+| Processes | one per server (7) | one `component_container_isolated` |
+| DDS participants for nav2 | 7 | 1 |
+| Lifecycle manager start | delayed by `lifecycle_settle` after the last node's process starts | loaded last, so ordering replaces the delay |
+
+The delay on the process-per-node path is not cosmetic. A lifecycle manager
+that creates its service clients during a 40-node launch storm can block
+forever waiting on discovery, which used to abort bring-up entirely. Loading
+the servers and their manager into one container removes that race rather than
+timing around it, because the manager is constructed after the nodes it
+manages and they share a single participant.
+
+The container is `component_container_isolated`, which gives each component
+its own executor on its own thread. A shared single-threaded executor
+deadlocks: the lifecycle manager calls `change_state` on servers that would be
+waiting in the same executor for that call to return.
+
+`robot_localization`'s EKF is not a composable component in this release and
+stays a separate process either way, as do the Python shims
+(`twist_to_stamped`, `tf_restamp`).
 
 ---
 
