@@ -229,6 +229,39 @@ velocity_smoother:
     deadband_velocity: [0.0, 0.0, 0.0]
     velocity_timeout: 1.0
 
+# Drives a route through /follow_waypoints instead of one goal at a time.
+# The four-goal tour dispatches each goal separately and settles 15 s between
+# them, which exercises "can it reach a pose" but never "can it keep running";
+# every leg starts from a stationary robot with a freshly settled stack. A
+# waypoint route runs continuously, and number_of_loops lets one action call
+# cover a long autonomy run.
+#
+# Parameter names verified against libwaypoint_follower_core.so and
+# libwait_at_waypoint.so: the plugin key is waypoint_task_executor_plugin,
+# NOT waypoint_task_executor, and an unrecognised key here would be ignored
+# in silence rather than rejected.
+waypoint_follower:
+  ros__parameters:
+    use_sim_time: true
+    loop_rate: 20
+    # false: a missed waypoint is recorded in the result and the route
+    # continues. Stopping the whole run on one miss would throw away the
+    # measurement that matters — how many of N it actually reached.
+    stop_on_failure: false
+    # The tour's per-goal budget is 400 s; a multi-lap route must be allowed
+    # to exceed nav2's default result timeout or a healthy long run is
+    # reported as a failure.
+    action_server_result_timeout: 3600.0
+    waypoint_task_executor_plugin: "wait_at_waypoint"
+    wait_at_waypoint:
+      plugin: "nav2_waypoint_follower::WaitAtWaypoint"
+      enabled: True
+      # Milliseconds. Zero would chain goals with no settling at all; the
+      # separate-goal tour needed 15 s between goals to stop a still-moving
+      # robot contaminating the next leg, and this is the continuous-route
+      # equivalent kept deliberately short.
+      waypoint_pause_duration: 500
+
 global_costmap:
   global_costmap:
     ros__parameters:
@@ -332,4 +365,4 @@ lifecycle_manager:
   ros__parameters:
     use_sim_time: true
     autostart: true
-    node_names: ["controller_server", "planner_server", "smoother_server", "behavior_server", "bt_navigator", "velocity_smoother"]
+    node_names: ["controller_server", "planner_server", "smoother_server", "behavior_server", "bt_navigator", "velocity_smoother", "waypoint_follower"]

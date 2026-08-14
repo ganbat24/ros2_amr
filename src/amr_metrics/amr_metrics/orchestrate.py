@@ -379,6 +379,11 @@ def main():
     ap.add_argument('--campaign', type=int, metavar='N',
                     help='run N tours back to back into <out-dir>/run_NN, '
                          'each on a freshly launched stack, then summarise')
+    ap.add_argument('--autonomy', action='store_true',
+                    help='run a continuous waypoint route instead of the '
+                         'goal-at-a-time tour (see --loops)')
+    ap.add_argument('--loops', type=int, default=0,
+                    help='extra repeats of the route for --autonomy')
     ap.add_argument('--use-slam', action='store_true',
                     help='map with slam_toolbox instead of localising with '
                          'AMCL; after the tour, save the map and score it '
@@ -444,11 +449,16 @@ def main():
 
         print('== environment ==')
         capture_environment(args.out_dir)
-        print('== validation tour ==')
+        if args.autonomy:
+            print('== waypoint autonomy run ==')
+            measure = [sys.executable, '-m', 'amr_metrics.run_waypoints',
+                       '--out-dir', args.out_dir, '--loops', str(args.loops)]
+        else:
+            print('== validation tour ==')
+            measure = [sys.executable, '-m', 'amr_metrics.run_validation',
+                       '--out-dir', args.out_dir]
         try:
-            result = subprocess.run(
-                [sys.executable, '-m', 'amr_metrics.run_validation',
-                 '--out-dir', args.out_dir])
+            result = subprocess.run(measure)
             if args.use_slam:
                 save_and_score_map(args.out_dir)
             return result.returncode

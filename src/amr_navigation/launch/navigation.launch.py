@@ -49,6 +49,8 @@ NAV2_COMPONENTS = [
     ('nav2_bt_navigator', 'nav2_bt_navigator::BtNavigator', 'bt_navigator'),
     ('nav2_velocity_smoother', 'nav2_velocity_smoother::VelocitySmoother',
      'velocity_smoother'),
+    ('nav2_waypoint_follower', 'nav2_waypoint_follower::WaypointFollower',
+     'waypoint_follower'),
     ('nav2_lifecycle_manager', 'nav2_lifecycle_manager::LifecycleManager',
      'lifecycle_manager'),
 ]
@@ -150,6 +152,15 @@ def generate_launch_description():
         package='nav2_velocity_smoother',
         executable='velocity_smoother',
         name='velocity_smoother',
+        output='screen',
+        parameters=[nav2_params],
+    )
+
+    waypoint_follower = Node(
+        condition=separate,
+        package='nav2_waypoint_follower',
+        executable='waypoint_follower',
+        name='waypoint_follower',
         output='screen',
         parameters=[nav2_params],
     )
@@ -281,6 +292,7 @@ def generate_launch_description():
             behavior_server,
             bt_navigator,
             velocity_smoother,
+            waypoint_follower,
             twist_to_stamped,
             lifecycle_manager,
             nav2_container,
