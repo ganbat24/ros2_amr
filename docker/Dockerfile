@@ -22,15 +22,22 @@ ENV ROS_DISTRO=jazzy
 # with `rm -f /dev/shm/fastrtps_* /dev/shm/sem.fastrtps_*` after a hard kill
 # (amr_metrics' relaunch path already does this).
 
-# Gazebo Sim runtime (gz-sim8) ships from the OSRF apt repo; without it
-# the image has no `gz` binary and simulation cannot start. Versions are
-# pinned to the set verified working on this stack (2026-08).
-RUN apt-get update && apt-get install -y wget gnupg lsb-release \
-    && wget -q https://packages.osrfoundation.org/gazebo.gpg -O /usr/share/keyrings/pkgs-osrf-archive-keyring.gpg \
-    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/pkgs-osrf-archive-keyring.gpg] http://packages.osrfoundation.org/gazebo/ubuntu-stable $(lsb_release -cs) main" > /etc/apt/sources.list.d/gazebo-stable.list \
-    && apt-get update \
-    && apt-get install -y gz-harmonic=1.0.0-1~noble libgz-sim8=8.14.0-1~noble \
-    && rm -rf /var/lib/apt/lists/*
+# Gazebo comes from ros-jazzy-ros-gz's vendored build (gz_sim_vendor), pulled
+# in with the ROS packages below — NOT from the OSRF apt repo.
+#
+# This image used to also install gz-harmonic=1.0.0-1~noble and
+# libgz-sim8=8.14.0-1~noble from OSRF, "pinned to the set verified working".
+# That pin never bound: sourcing ROS puts /opt/ros/jazzy/opt/gz_*_vendor first
+# on LD_LIBRARY_PATH and GZ_CONFIG_PATH, including the `gz` binary itself, and
+# every ros2 launch runs ROS-sourced. The image therefore carried two complete
+# Gazebo installations (apt 8.14.0, vendored 8.11.0) and simulated on the
+# vendored one while the Dockerfile advertised the other — so `gz sim
+# --versions` answered differently depending on whether you had sourced ROS.
+#
+# CI has never installed the OSRF packages and works, which is the proof that
+# they were redundant. Dropping them removes the ambiguity, shrinks the image,
+# and makes the container match CI exactly. Check the version that matters
+# from inside a ROS-sourced shell.
 
 # System dependencies
 RUN apt-get update && apt-get install -y \

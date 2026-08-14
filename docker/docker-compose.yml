@@ -1,13 +1,40 @@
 # docker/docker-compose.yml
-# Brings up simulation, RViz, and optional Nav2 in isolated containers.
+# Containerised simulation, RViz and teleop.
+#
+# WHICH ENVIRONMENT IS THIS FOR?
+#   The container exists for reproducible builds and CI parity. The primary
+#   place to actually run the simulation is a native ROS 2 install on a
+#   machine with enough cores (WSL2 here). Running the full stack in this
+#   container on a small host is possible but starved, and performance
+#   conclusions drawn there are not valid.
 #
 # Usage:
-#   docker compose -f docker/docker-compose.yml up sim          # Gazebo + EKF + AMCL (localization mode)
-#   docker compose -f docker/docker-compose.yml up rviz         # RViz connected to sim
-#   docker compose -f docker/docker-compose.yml up teleop       # Keyboard teleop
+#   docker compose -f docker/docker-compose.yml up sim     # Gazebo + EKF + AMCL
+#   docker compose -f docker/docker-compose.yml up rviz    # RViz against sim
+#   docker compose -f docker/docker-compose.yml up teleop  # Keyboard teleop
 #
 # SLAM mapping mode: docker compose exec sim ros2 launch amr_bringup
 #   system.launch.py use_slam:=true
+#
+# RENDERING — decide per host, do not copy a setting between environments.
+#   Gazebo's gpu_lidar needs a GL context. Whether to force software rendering
+#   depends on whether the host has a usable GL driver:
+#
+#     LIBGL_ALWAYS_SOFTWARE=1   required where there is no driver (CI, a
+#                               headless server, WSL2 without working GPU
+#                               passthrough). Slow enough to affect sensor
+#                               timing — expect degraded scan rates.
+#     unset                     correct where a real driver is present. Forcing
+#                               software on top of a working driver makes
+#                               gpu_lidar segfault with
+#                               "SceneManager.cc: Scene already exists".
+#
+#   Check before choosing:  glxinfo -B | grep 'OpenGL renderer'
+#   ("llvmpipe" means you are already on software.)
+#
+#   Set it explicitly for this stack via AMR_SOFTWARE_RENDER=1 (default: unset,
+#   i.e. use whatever the host provides). The /dev/dri passthrough below is a
+#   no-op on hosts without a render node.
 
 services:
   sim:
@@ -22,6 +49,8 @@ services:
       - QT_X11_NO_MITSHM=1
       - GZ_SIM_RESOURCE_PATH=/ros2_ws/install/amr_simulation/share/amr_simulation
       - AMR_GZ_HEADLESS=${AMR_GZ_HEADLESS:-false}
+      # See the RENDERING note at the top of this file before setting this.
+      - LIBGL_ALWAYS_SOFTWARE=${AMR_SOFTWARE_RENDER:-}
     volumes:
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
       - ${XAUTHORITY:-/tmp/.docker.xauth}:/tmp/.docker.xauth:rw
