@@ -292,6 +292,28 @@ def capture_environment(out_dir):
     return env
 
 
+def save_and_score_map(out_dir):
+    """Save the live SLAM map and score it against the simulated floorplan.
+
+    Must run while the stack is still up — map_saver_cli subscribes to /map,
+    so once the stack is torn down there is nothing left to save. This is why
+    it sits inside the tour block rather than after teardown.
+    """
+    stem = os.path.join(out_dir, 'slam_map')
+    print('== saving SLAM map ==', flush=True)
+    saved = _sh('ros2 run nav2_map_server map_saver_cli -f "%s" '
+                '--ros-args -p save_map_timeout:=60.0' % stem, timeout=120)
+    if not os.path.exists(stem + '.yaml'):
+        print('  map_saver_cli produced no map; skipping scoring', flush=True)
+        print('  %s' % (saved.stderr.strip().splitlines() or [''])[-1],
+              flush=True)
+        return False
+    print('== scoring map against the simulated floorplan ==', flush=True)
+    subprocess.run([sys.executable, '-m', 'amr_metrics.map_quality',
+                    '--map', stem + '.yaml', '--out-dir', out_dir])
+    return True
+
+
 def run_campaign(args):
     """Run N tours back to back, each on a fresh stack, then summarise.
 
@@ -357,7 +379,20 @@ def main():
     ap.add_argument('--campaign', type=int, metavar='N',
                     help='run N tours back to back into <out-dir>/run_NN, '
                          'each on a freshly launched stack, then summarise')
+    ap.add_argument('--use-slam', action='store_true',
+                    help='map with slam_toolbox instead of localising with '
+                         'AMCL; after the tour, save the map and score it '
+                         'against the simulated floorplan')
     args = ap.parse_args()
+
+    # SLAM and AMCL are mutually exclusive and start different nodes, so the
+    # readiness gate has to watch different ones. Waiting on /amcl in SLAM
+    # mode times out against a stack that is perfectly healthy.
+    if args.use_slam:
+        args.launch_args = (args.launch_args + ' use_slam:=true').strip()
+        lifecycle_nodes = ('/slam_toolbox',)
+    else:
+        lifecycle_nodes = ('/amcl', '/map_server')
 
     if not any([args.teardown, args.launch, args.wait_ready, args.tour,
                 args.campaign]):
@@ -380,7 +415,8 @@ def main():
 
     if args.wait_ready and not args.tour:
         print('== waiting for lifecycle active ==')
-        elapsed = wait_lifecycle_active(timeout=args.launch_timeout)
+        elapsed = wait_lifecycle_active(nodes=lifecycle_nodes,
+                                        timeout=args.launch_timeout)
         if elapsed is None:
             print('FAILED: lifecycle nodes never reached active')
             return 1
@@ -395,7 +431,8 @@ def main():
         print('  log: %s' % launch(headless=args.headless == 'true',
                                    extra_args=args.launch_args))
         print('== waiting for lifecycle active ==')
-        elapsed = wait_lifecycle_active(timeout=args.launch_timeout)
+        elapsed = wait_lifecycle_active(nodes=lifecycle_nodes,
+                                        timeout=args.launch_timeout)
         if elapsed is None:
             print('  lifecycle never reached active; retrying')
             continue
@@ -412,6 +449,8 @@ def main():
             result = subprocess.run(
                 [sys.executable, '-m', 'amr_metrics.run_validation',
                  '--out-dir', args.out_dir])
+            if args.use_slam:
+                save_and_score_map(args.out_dir)
             return result.returncode
         finally:
             # Always tear the stack down. A tour that leaves 25 processes and

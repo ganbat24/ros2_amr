@@ -28,6 +28,7 @@ setup(
             'motion_health = amr_metrics.motion_health:main',
             'path_health = amr_metrics.path_health:main',
             'tour_stats = amr_metrics.tour_stats:main',
+            'map_quality = amr_metrics.map_quality:main',
         ],
     },
 )
