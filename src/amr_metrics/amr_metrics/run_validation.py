@@ -15,6 +15,7 @@ Usage:
                                       [--per-goal-timeout 240] [--no-plot]
 """
 import argparse
+import json
 import os
 import subprocess
 import sys
@@ -203,6 +204,20 @@ def main():
         print('  %-14s %-9s %.0f s' % (g, s, w))
     n_succ = sum(1 for s, _ in results.values() if s == 'SUCCEEDED')
     print('tour: %d/%d goals succeeded' % (n_succ, len(goals)))
+
+    # Machine-readable, because a repeatability claim needs a campaign and a
+    # campaign cannot be aggregated from stdout. `tour_stats` reads these.
+    with open(os.path.join(args.out_dir, 'results.json'), 'w') as handle:
+        json.dump({
+            'goals': [
+                {'goal': g, 'x': GOAL_POSES[g][0], 'y': GOAL_POSES[g][1],
+                 'status': s, 'wall_s': round(w, 1)}
+                for g, (s, w) in results.items()
+            ],
+            'succeeded': n_succ,
+            'total': len(goals),
+            'per_goal_timeout_s': args.per_goal_timeout,
+        }, handle, indent=2)
 
     if not args.no_plot:
         out_png = os.path.join(args.out_dir, 'metrics_report.png')

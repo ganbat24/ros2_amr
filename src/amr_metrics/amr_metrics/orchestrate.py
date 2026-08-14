@@ -222,6 +222,14 @@ def capture_environment(out_dir):
         out = _sh(cmd, timeout=20)
         return (out.stdout.strip().splitlines() or [''])[0]
 
+    # Tracked files only: build outputs and scratch dirs are untracked and
+    # would mark every run dirty for no reason.
+    dirty_paths = sorted(
+        line[3:] for line in _sh(
+            'git -C "%s" status --porcelain --untracked-files=no 2>/dev/null'
+            % _workspace_root(), timeout=20).stdout.splitlines() if line.strip()
+    )
+
     env = {
         'timestamp': time.strftime('%Y-%m-%dT%H:%M:%S%z'),
         'host': platform.node(),
@@ -241,6 +249,15 @@ def capture_environment(out_dir):
         # which is not a git repo, and silently yielded an empty SHA.
         'git_sha': first_line(
             'git -C "%s" rev-parse HEAD 2>/dev/null' % _workspace_root()),
+        # A SHA alone is not provenance. The 4/4 tours of 2026-08-14 were run
+        # with the default_server_timeout fix still uncommitted, so the SHA
+        # recorded beside them (6b0432f) does not contain the change that
+        # produced the result. Record whether the tree was dirty, and which
+        # tracked files differed, so an artifact always describes the code
+        # that actually ran rather than the last commit that happened to
+        # precede it.
+        'git_dirty': bool(dirty_paths),
+        'git_dirty_paths': dirty_paths,
         'real_time_factor': first_line(
             "grep -o '<real_time_factor>[^<]*' "
             "$(ros2 pkg prefix --share amr_simulation 2>/dev/null)"
@@ -257,7 +274,56 @@ def capture_environment(out_dir):
     print('  environment recorded -> %s' % path, flush=True)
     for key in ('host', 'cores', 'rmw', 'gz_version', 'real_time_factor'):
         print('    %-18s %s' % (key, env[key]), flush=True)
+    print('    %-18s %s' % ('git', env['git_sha'][:7] + (
+        ' DIRTY (%d tracked file%s modified)' % (
+            len(dirty_paths), '' if len(dirty_paths) == 1 else 's')
+        if dirty_paths else ' clean')), flush=True)
+    if dirty_paths:
+        print('      this run does NOT correspond to a committed state:',
+              flush=True)
+        for rel in dirty_paths:
+            print('        %s' % rel, flush=True)
     return env
+
+
+def run_campaign(args):
+    """Run N tours back to back, each on a fresh stack, then summarise.
+
+    Each tour is a separate process so one crashed run cannot take the
+    campaign with it, and so every run gets the same teardown/launch/gate
+    path as a solo `--tour` — a campaign whose runs differ from the runs it
+    is meant to characterise is worth nothing.
+    """
+    os.makedirs(args.out_dir, exist_ok=True)
+    with open(os.path.join(args.out_dir, 'campaign.json'), 'w') as handle:
+        json.dump({'requested_runs': args.campaign,
+                   'launch_args': args.launch_args,
+                   'started': time.strftime('%Y-%m-%dT%H:%M:%S%z')},
+                  handle, indent=2)
+
+    run_dirs = []
+    for i in range(1, args.campaign + 1):
+        run_dir = os.path.join(args.out_dir, 'run_%02d' % i)
+        print('\n########## campaign run %d/%d -> %s ##########'
+              % (i, args.campaign, run_dir), flush=True)
+        cmd = [sys.executable, '-m', 'amr_metrics.orchestrate', '--tour',
+               '--out-dir', run_dir, '--headless', args.headless,
+               '--attempts', str(args.attempts)]
+        if args.launch_args:
+            cmd += ['--launch-args', args.launch_args]
+        try:
+            subprocess.run(cmd, timeout=3600)
+        except subprocess.TimeoutExpired:
+            print('  run %d exceeded its hour budget; tearing down' % i,
+                  flush=True)
+            teardown()
+        run_dirs.append(run_dir)
+
+    print('\n########## campaign summary ##########', flush=True)
+    subprocess.run([sys.executable, '-m', 'amr_metrics.tour_stats',
+                    '--label', os.path.basename(args.out_dir.rstrip('/'))]
+                   + run_dirs)
+    return 0
 
 
 def main():
@@ -277,11 +343,23 @@ def main():
     ap.add_argument('--keep-alive', action='store_true',
                     help='leave the stack running after --tour (default: '
                          'always tear down, so a run cannot pin the machine)')
+    ap.add_argument('--launch-args', default='',
+                    help='extra launch arguments, e.g. "use_tf_restamp:=false"'
+                         ' — the only supported way to A/B a launch option, '
+                         'since ros2 param set does not reach plugins that '
+                         'capture their config at construction')
+    ap.add_argument('--campaign', type=int, metavar='N',
+                    help='run N tours back to back into <out-dir>/run_NN, '
+                         'each on a freshly launched stack, then summarise')
     args = ap.parse_args()
 
-    if not any([args.teardown, args.launch, args.wait_ready, args.tour]):
-        ap.error('nothing to do — pass --tour, or one of '
+    if not any([args.teardown, args.launch, args.wait_ready, args.tour,
+                args.campaign]):
+        ap.error('nothing to do — pass --tour or --campaign N, or one of '
                  '--teardown/--launch/--wait-ready')
+
+    if args.campaign:
+        return run_campaign(args)
 
     if args.teardown and not args.tour:
         print('== teardown ==')
@@ -289,7 +367,8 @@ def main():
 
     if args.launch and not args.tour:
         print('== launch ==')
-        print('  log: %s' % launch(headless=args.headless == 'true'))
+        print('  log: %s' % launch(headless=args.headless == 'true',
+                                   extra_args=args.launch_args))
         if not args.wait_ready:
             return 0
 
@@ -307,7 +386,8 @@ def main():
         print('== attempt %d/%d: teardown ==' % (attempt, args.attempts))
         teardown()
         print('== launch ==')
-        print('  log: %s' % launch(headless=args.headless == 'true'))
+        print('  log: %s' % launch(headless=args.headless == 'true',
+                                   extra_args=args.launch_args))
         print('== waiting for lifecycle active ==')
         elapsed = wait_lifecycle_active(timeout=args.launch_timeout)
         if elapsed is None:
