@@ -27,6 +27,7 @@ setup(
             'scan_health = amr_metrics.scan_health:main',
             'motion_health = amr_metrics.motion_health:main',
             'path_health = amr_metrics.path_health:main',
+            'tour_stats = amr_metrics.tour_stats:main',
         ],
     },
 )
