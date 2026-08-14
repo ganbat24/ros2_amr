@@ -201,6 +201,16 @@ def wait_drive_ready(retries=5, retry_wait=30.0):
             rclpy.shutdown()
 
 
+def _workspace_root():
+    """Best guess at the colcon workspace root, for recording the git SHA.
+
+    COLCON_PREFIX_PATH points at <workspace>/install; the workspace itself is
+    its parent. Falls back to the cwd.
+    """
+    prefix = os.environ.get('COLCON_PREFIX_PATH', '').split(os.pathsep)[0]
+    return os.path.dirname(prefix) if prefix else os.getcwd()
+
+
 def capture_environment(out_dir):
     """Record what this run actually ran on.
 
@@ -227,8 +237,10 @@ def capture_environment(out_dir):
         'gz_version': first_line('gz sim --versions 2>/dev/null'),
         'gz_binary': shutil.which('gz') or '',
         'libgl_always_software': os.environ.get('LIBGL_ALWAYS_SOFTWARE', ''),
-        'git_sha': first_line('git -C "$(dirname %s)" rev-parse HEAD 2>/dev/null'
-                              % os.path.abspath(out_dir)),
+        # The workspace, not the output dir — out_dir is usually under /tmp,
+        # which is not a git repo, and silently yielded an empty SHA.
+        'git_sha': first_line(
+            'git -C "%s" rev-parse HEAD 2>/dev/null' % _workspace_root()),
         'real_time_factor': first_line(
             "grep -o '<real_time_factor>[^<]*' "
             "$(ros2 pkg prefix --share amr_simulation 2>/dev/null)"
