@@ -243,10 +243,23 @@ global_costmap:
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
         cost_scaling_factor: 3.0
-        # 0.35 m (robot radius 0.25 + 0.1): a 0.5 m inflation made every
-        # 1.4-1.6 m door opening nearly impassable and left no room for
-        # DWB recoveries once near a wall.
-        inflation_radius: 0.35
+        # 0.55 m, nav2's reference value. It was 0.35 (robot radius + 0.1) on
+        # the belief that a wider inflation made the 1.4-1.6 m doors
+        # impassable. It does not: cells within robot_radius (0.25) are
+        # inscribed and hard-vetoed; everything beyond that is graded COST,
+        # not a block. The hard-passable band through a 1.6 m door stays
+        # 1.6 - 2(0.25) = 1.1 m whatever the inflation radius is, and the
+        # door centre sits 0.8 m from each wall — beyond 0.55, so zero
+        # inflation cost.
+        #
+        # What 0.35 did cost was the gradient. Past 0.36 m from a wall every
+        # cell was equally free, so nothing pulled the robot toward open
+        # space and it tracked along walls. Measured 2026-08-14, a failed g3
+        # left the robot at (7.47, 5.13) — 0.23 m from the W2 wall face,
+        # inside the inscribed radius, where every trajectory is vetoed
+        # ("No valid trajectories out of 440") and the next goal then aborts
+        # instantly on an in-collision start.
+        inflation_radius: 0.55
       # (global costmap: static + inflation only — see plugins above)
 
 local_costmap:
@@ -280,7 +293,8 @@ local_costmap:
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
         cost_scaling_factor: 3.0
-        inflation_radius: 0.35
+        # Keep in step with the global costmap — see the note there.
+        inflation_radius: 0.55
 
 lifecycle_manager:
   ros__parameters:

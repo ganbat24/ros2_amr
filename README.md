@@ -257,10 +257,12 @@ needs a warm-up after launch, and `orchestrate` probes odometry until it
 responds before dispatching any goal. Bring-up reaches `active` in about
 12 s.
 
-Under software rendering (no GPU passthrough) the LiDAR pipeline
-delivers roughly 67% of its nominal 10 Hz with occasional ~1.5 s stalls.
-The tour passes anyway; `ros2 run amr_metrics scan_health` reports the
-current figure if you need to check it on a given host.
+Under software rendering (no GPU passthrough) the simulation runs at a
+real-time factor of about 0.63, so a tour takes proportionally longer in
+wall-clock time. Sensor rates are unaffected in simulation time — the
+LiDAR delivers its full nominal 10 Hz — because every sim-time consumer
+is slowed by the same factor. `ros2 run amr_metrics scan_health` reports
+the rate in both time bases along with the measured real-time factor.
 
 ## License
 
