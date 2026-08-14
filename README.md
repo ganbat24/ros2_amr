@@ -208,8 +208,11 @@ See the contributing guidelines in the project documentation.
 
 The stack is a **working simulation baseline**: the full pipeline
 (control, sensors, localization, navigation) is verified live in Docker
-on Jazzy + Gazebo Harmonic, with a 104-test suite (0 errors / 0
-failures) run in CI. SLAM Toolbox mapping is selectable via
+on Jazzy + Gazebo Harmonic. `colcon test` over the eight `amr_*`
+packages reports **97 test cases across 40 CTest targets, 0 errors and
+0 failures** (measured 2026-08-14; the two counts differ because each
+ament lint target expands into one case per file, and the workspace's
+vendored `gz_ros2_control` overlay is excluded). SLAM Toolbox mapping is selectable via
 `use_slam:=true` (verified: map grows as the robot drives — the 2.8.x
 async node is a lifecycle node and is driven by its own lifecycle
 manager); AMCL with the pre-built map remains the default. Real-hardware
