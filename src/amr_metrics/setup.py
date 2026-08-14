@@ -26,6 +26,7 @@ setup(
             'orchestrate = amr_metrics.orchestrate:main',
             'scan_health = amr_metrics.scan_health:main',
             'motion_health = amr_metrics.motion_health:main',
+            'path_health = amr_metrics.path_health:main',
         ],
     },
 )

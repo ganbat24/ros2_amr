@@ -59,16 +59,21 @@ controller_server:
       min_speed_xy: 0.0
       max_speed_xy: 0.5
       min_speed_theta: 0.0
-      acc_lim_x: 1.0
+      # 2.5 is nav2's reference; 1.0 throttled how fast DWB could ramp
+      # up within a control cycle.
+      acc_lim_x: 2.5
       acc_lim_y: 0.0
       acc_lim_theta: 3.2
-      decel_lim_x: -1.0
+      decel_lim_x: -2.5
       decel_lim_y: 0.0
       decel_lim_theta: -3.2
       vx_samples: 20
       vy_samples: 5
       vtheta_samples: 20
-      sim_time: 2.2
+      # 1.7 is nav2's reference. 2.2 projected 1.1 m ahead at full speed,
+      # which in this world's doorways put most fast trajectories into
+      # inflation.
+      sim_time: 1.7
       linear_granularity: 0.05
       angular_granularity: 0.025
       xy_goal_tolerance: 0.25
@@ -84,22 +89,34 @@ controller_server:
       # tour showed no measurable improvement over 0.2, so reverted rather
       # than keep an unproven deviation from this carefully-tuned baseline.)
       BaseObstacle.scale: 0.2
-      PathAlign.scale: 32.0
-      # Goal critics at 24 were almost as strong as the path critics (32):
-      # near the path's east turn under W1a, the goal pull (north) won and
-      # the robot cut the corner into the wall's inflation ("Start
-      # occupied"). 6.0 keeps the goal relevant only near the goal.
-      GoalAlign.scale: 6.0
-      # Look further ahead along the path so corner cutting into obstacle
-      # inflation is penalized (0.1 m let the robot drift into walls/O1;
-      # 0.3 m still oscillated across the path near the D1 door — the
-      # cross-track correction overshot into W1a's inflation and the
-      # robot detoured south of the door). 0.8 m smooths the correction.
-      PathAlign.forward_point_distance: 0.8
-      GoalAlign.forward_point_distance: 0.8
+      # The Align critics are DISABLED, matching nav2's own shipped DWB
+      # reference (nav2_bringup/params/nav2_multirobot_params_1.yaml sets
+      # both to 0.0). They were 32.0 and 6.0 here, and that was the reason
+      # the robot crawled everywhere.
+      #
+      # Why they break it: PathAlign scores how far a trajectory's forward
+      # projection lands from the path. A trajectory that does not move has
+      # zero deviation, so it scores 0 — a perfect score no moving
+      # trajectory can beat. Measured from DWB's own /evaluation topic, the
+      # stationary choice scored 16.40 while the best moving candidate
+      # scored 25.10, of which PathAlign contributed +17.60. Standing still
+      # was a local optimum, and the controller sat in it: mean commanded
+      # velocity 0.015 m/s against a max_vel_x of 0.5.
+      #
+      # Corner-cutting — what these critics were raised to fix — is the
+      # obstacle critic's job (BaseObstacle above) and the planner's, not
+      # the alignment critics'.
+      PathAlign.scale: 0.0
+      GoalAlign.scale: 0.0
+      # Irrelevant while the scales are 0; kept at nav2's default so the
+      # critics behave normally if anyone re-enables them.
+      PathAlign.forward_point_distance: 0.1
+      GoalAlign.forward_point_distance: 0.1
+      # The Dist critics are what reward progress toward the path and goal.
+      # nav2's reference is 32.0 / 24.0; GoalDist was 6.0 here, which left
+      # almost nothing pulling the robot forward once Align was removed.
       PathDist.scale: 32.0
-      # see GoalAlign.scale note above
-      GoalDist.scale: 6.0
+      GoalDist.scale: 24.0
       RotateToGoal.scale: 32.0
       RotateToGoal.slowing_factor: 5.0
       RotateToGoal.lookahead_time: -1.0
