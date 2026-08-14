@@ -344,6 +344,13 @@ def run_campaign(args):
                '--attempts', str(args.attempts)]
         if args.launch_args:
             cmd += ['--launch-args', args.launch_args]
+        # Without these a --campaign --use-slam run would quietly execute as
+        # a plain AMCL tour: the child watches /amcl, times out or measures
+        # the wrong stack, and never saves a map.
+        if args.use_slam:
+            cmd += ['--use-slam']
+        if args.autonomy:
+            cmd += ['--autonomy', '--loops', str(args.loops)]
         try:
             subprocess.run(cmd, timeout=3600)
         except subprocess.TimeoutExpired:
@@ -398,10 +405,15 @@ def main():
     # SLAM and AMCL are mutually exclusive and start different nodes, so the
     # readiness gate has to watch different ones. Waiting on /amcl in SLAM
     # mode times out against a stack that is perfectly healthy.
+    #
+    # args.launch_args is left pristine so run_campaign can forward it
+    # verbatim alongside --use-slam; folding the flag into it here and then
+    # forwarding both appends use_slam:=true twice.
     if args.use_slam:
-        args.launch_args = (args.launch_args + ' use_slam:=true').strip()
+        effective_launch_args = (args.launch_args + ' use_slam:=true').strip()
         lifecycle_nodes = ('/slam_toolbox',)
     else:
+        effective_launch_args = args.launch_args
         lifecycle_nodes = ('/amcl', '/map_server')
 
     if not any([args.teardown, args.launch, args.wait_ready, args.tour,
@@ -411,7 +423,7 @@ def main():
 
     # Recorded into every environment.json so a variant run is never
     # indistinguishable from the baseline it is compared against.
-    os.environ['AMR_LAUNCH_ARGS'] = args.launch_args
+    os.environ['AMR_LAUNCH_ARGS'] = effective_launch_args
 
     if args.campaign:
         return run_campaign(args)
@@ -423,7 +435,7 @@ def main():
     if args.launch and not args.tour:
         print('== launch ==')
         print('  log: %s' % launch(headless=args.headless == 'true',
-                                   extra_args=args.launch_args))
+                                   extra_args=effective_launch_args))
         if not args.wait_ready:
             return 0
 
@@ -443,7 +455,7 @@ def main():
         teardown()
         print('== launch ==')
         print('  log: %s' % launch(headless=args.headless == 'true',
-                                   extra_args=args.launch_args))
+                                   extra_args=effective_launch_args))
         print('== waiting for lifecycle active ==')
         elapsed = wait_lifecycle_active(nodes=lifecycle_nodes,
                                         timeout=args.launch_timeout)
