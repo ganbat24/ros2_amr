@@ -14,6 +14,20 @@ bt_navigator:
     # real file instead of nav2_bringup's now-nonexistent
     # behavior_trees/navigate_w_replanning_and_recovery.xml.
     default_nav_to_pose_bt_xml: "navigate_to_pose_w_replanning_and_recovery.xml"
+    # nav2's default is 20 ms — how long a BT action node waits for its
+    # server (controller/planner/behaviour) to ACKNOWLEDGE a goal. That is a
+    # tight window on a host running the sim below real time under software
+    # rendering, and when it expires the BT aborts the whole navigation goal
+    # with "Timed out while waiting for action server to acknowledge".
+    #
+    # Measured 2026-08-14: a g3 that failed at (7.07, 4.78) logged exactly one
+    # warning for the whole goal — that timeout — with zero "No valid
+    # trajectories" and zero "Failed to make progress". The robot was
+    # navigating fine; the acknowledgement just did not arrive in 20 ms.
+    #
+    # This only changes how patient the BT is with a busy server. It does not
+    # affect planning or control behaviour.
+    default_server_timeout: 200
     # nav2 1.3.x auto-loads the built-in BT plugin libraries and defaults
     # plugin_lib_names accordingly; listing them explicitly caused
     # "ID [...] already registered" and crashed bt_navigator. Omit it.
