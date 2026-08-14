@@ -23,6 +23,8 @@ setup(
             'ready_gate = amr_metrics.ready_gate:main',
             'plot_metrics = amr_metrics.plot_metrics:main',
             'run_validation = amr_metrics.run_validation:main',
+            'orchestrate = amr_metrics.orchestrate:main',
+            'scan_health = amr_metrics.scan_health:main',
         ],
     },
 )

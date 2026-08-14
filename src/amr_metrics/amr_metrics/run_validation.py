@@ -103,48 +103,6 @@ def probe_ready(gate, retries, retry_wait):
     return False
 
 
-_KILL_PATTERNS = [
-    'ros2 launch', 'g[z] sim', 'gz_ros2_control', 'robot_state_publisher',
-    'spawner', 'static_transform', 'diff_drive', 'joint_state',
-    'scan_restamp.py', 'tf_restamp.py', 'ekf_node', 'nav2_amcl', 'amcl',
-    'map_server', 'controller_server', 'planner_server', 'smoother_server',
-    'behavior_server', 'bt_navigator', 'velocity_smoother',
-    'collision_monitor', 'waypoint_follower', 'lifecycle_manager',
-    'parameter_bridge', 'twist_to_stamped.py',
-]
-
-
-def relaunch_stack():
-    """Kill and relaunch the full stack (headless); block until it has had
-    time to come up.
-
-    The gz_ros2_control/physics bridge intermittently fails to warm up under
-    load: the odom feedback stays frozen and the nav lifecycle aborts. A
-    stack relaunch is the reliable recovery.
-
-    Two things this needs beyond a plain pkill:
-    - Killing by process-name pattern individually, not just "ros2 launch"/
-      "gz sim" — plain executable names like planner_server or amcl don't
-      match either pattern and survive as orphans, and a `ros2 launch`
-      subprocess tree doesn't reliably SIGTERM its whole tree on `pkill -f`.
-    - Clearing stale FastRTPS shared-memory segments from /dev/shm. A killed
-      DDS participant doesn't clean these up; on the next launch, new
-      participants (observed: map_server) fail to bind their SHM port and
-      never come up as a discoverable node at all.
-    """
-    print('  drive chain never became ready — relaunching stack', flush=True)
-    install_dir = os.environ.get('COLCON_PREFIX_PATH', '').split(os.pathsep)[0]
-    kill_cmd = '; '.join('pkill -9 -f "%s" 2>/dev/null' % p for p in _KILL_PATTERNS)
-    subprocess.run(['bash', '-lc',
-            kill_cmd + '; sleep 3; '
-            'rm -f /dev/shm/fastrtps_* /dev/shm/sem.fastrtps_* 2>/dev/null; '
-            'nohup bash -lc \'source /opt/ros/jazzy/setup.bash && '
-            'source "%s/setup.bash" && '
-            'ros2 launch amr_bringup system.launch.py headless:=true > /tmp/launch.log 2>&1\' '
-            '>/dev/null 2>&1 &' % install_dir])
-    time.sleep(150)
-
-
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--out-dir', default='/tmp/amr_validation')
@@ -160,7 +118,6 @@ def main():
     ap.add_argument('--per-goal-timeout', type=float, default=400.0)
     ap.add_argument('--record-duration', type=float, default=1500.0)
     ap.add_argument('--no-plot', action='store_true')
-    ap.add_argument('--relaunch-attempts', type=int, default=2)
     args = ap.parse_args()
 
     import rclpy
@@ -168,19 +125,26 @@ def main():
     rclpy.init()
     gate = Gate()
     ok = probe_ready(gate, 5, 30)
-    for attempt in range(args.relaunch_attempts):
-        if ok:
-            break
-        print('== relaunch attempt %d ==' % (attempt + 1), flush=True)
-        relaunch_stack()
-        ok = probe_ready(gate, 5, 30)
     gate.destroy_node()
     rclpy.shutdown()
     if not ok:
-        print('DRIVE NEVER BECAME READY — aborting')
+        # Deliberately does NOT repair the stack. This tool measures; a tool
+        # that restarts its own subject mid-run produces results nobody can
+        # compare, which is how several earlier runs were confounded.
+        print('DRIVE NEVER BECAME READY — aborting.', flush=True)
+        print('This harness does not launch or repair the stack. Use:',
+              flush=True)
+        print('  ros2 run amr_metrics orchestrate --tour --out-dir <dir>',
+              flush=True)
         return 1
 
     os.makedirs(args.out_dir, exist_ok=True)
+    # Capture what this run ran on, so the numbers stay comparable later.
+    try:
+        from amr_metrics.orchestrate import capture_environment
+        capture_environment(args.out_dir)
+    except Exception as exc:                       # never block a run on this
+        print('  (environment capture skipped: %s)' % exc, flush=True)
     csv_path = os.path.join(args.out_dir, 'traj.csv')
     goals = [g for g in args.goals.split(',') if g in GOAL_POSES]
     print('== recording to %s ==' % csv_path)
