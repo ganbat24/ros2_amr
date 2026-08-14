@@ -274,6 +274,9 @@ def main():
     ap.add_argument('--attempts', type=int, default=2,
                     help='relaunch attempts if the stack never becomes ready')
     ap.add_argument('--launch-timeout', type=float, default=240.0)
+    ap.add_argument('--keep-alive', action='store_true',
+                    help='leave the stack running after --tour (default: '
+                         'always tear down, so a run cannot pin the machine)')
     args = ap.parse_args()
 
     if not any([args.teardown, args.launch, args.wait_ready, args.tour]):
@@ -319,12 +322,27 @@ def main():
         print('== environment ==')
         capture_environment(args.out_dir)
         print('== validation tour ==')
-        result = subprocess.run(
-            [sys.executable, '-m', 'amr_metrics.run_validation',
-             '--out-dir', args.out_dir])
-        return result.returncode
+        try:
+            result = subprocess.run(
+                [sys.executable, '-m', 'amr_metrics.run_validation',
+                 '--out-dir', args.out_dir])
+            return result.returncode
+        finally:
+            # Always tear the stack down. A tour that leaves 25 processes and
+            # a saturated machine behind is a bug in the harness, not a
+            # detail — this was left running for hours once, pinning a
+            # 12-core laptop at load 12. --keep-alive opts out when you
+            # genuinely want to inspect the live stack afterwards.
+            if not args.keep_alive:
+                print('== teardown (post-tour) ==')
+                teardown()
+            else:
+                print('== leaving the stack up (--keep-alive) ==')
+                print('   tear down with: '
+                      'ros2 run amr_metrics orchestrate --teardown')
 
     print('STACK NEVER BECAME READY after %d attempt(s)' % args.attempts)
+    teardown()
     return 1
 
 
