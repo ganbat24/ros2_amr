@@ -19,11 +19,39 @@ from launch.actions import (
     RegisterEventHandler,
     TimerAction,
 )
+from launch.conditions import IfCondition, UnlessCondition
 from launch.event_handlers import OnProcessStart
 from launch.substitutions import LaunchConfiguration
-from launch_ros.actions import Node
+from launch_ros.actions import LoadComposableNodes, Node
+from launch_ros.descriptions import ComposableNode
 from launch_ros.substitutions import FindPackageShare
 from nav2_common.launch import RewrittenYaml
+
+
+# (package, registered plugin, node name) for the composed nav2 stack.
+#
+# Every plugin string here was read off this machine's
+# share/ament_index/resource_index/rclcpp_components/<package> index rather
+# than guessed — note behavior_server::BehaviorServer, which does NOT follow
+# the nav2_<pkg>::<Class> pattern the other six do. test_navigation_launch
+# re-checks this list against that index, so a wrong name fails a unit test
+# instead of a 15-minute sim run.
+#
+# Order matters: LoadComposableNodes loads sequentially and the lifecycle
+# manager must come last, so it cannot create service clients before the
+# servers it manages exist.
+NAV2_COMPONENTS = [
+    ('nav2_controller', 'nav2_controller::ControllerServer',
+     'controller_server'),
+    ('nav2_planner', 'nav2_planner::PlannerServer', 'planner_server'),
+    ('nav2_smoother', 'nav2_smoother::SmootherServer', 'smoother_server'),
+    ('nav2_behaviors', 'behavior_server::BehaviorServer', 'behavior_server'),
+    ('nav2_bt_navigator', 'nav2_bt_navigator::BtNavigator', 'bt_navigator'),
+    ('nav2_velocity_smoother', 'nav2_velocity_smoother::VelocitySmoother',
+     'velocity_smoother'),
+    ('nav2_lifecycle_manager', 'nav2_lifecycle_manager::LifecycleManager',
+     'lifecycle_manager'),
+]
 
 
 def generate_launch_description():
@@ -52,6 +80,7 @@ def generate_launch_description():
     use_sim_time = LaunchConfiguration('use_sim_time')
     params_file = LaunchConfiguration('params_file')
     bt_xml_filename = LaunchConfiguration('bt_xml_filename')
+    use_composition = LaunchConfiguration('use_composition')
 
     # Rewrite the Nav2 YAML at launch time so that use_sim_time and the
     # behavior tree are taken from launch arguments.
@@ -65,7 +94,15 @@ def generate_launch_description():
         convert_types=True,
     )
 
+    # Two ways to run the same six servers. `use_composition:=false` starts
+    # each as its own process; `true` loads them all into one container.
+    # Process-per-node remains the default until a composed campaign has been
+    # measured against the process-per-node baseline — the capability landing
+    # is not the same thing as the capability being better here.
+    separate = UnlessCondition(use_composition)
+
     controller_server = Node(
+        condition=separate,
         package='nav2_controller',
         executable='controller_server',
         output='screen',
@@ -73,6 +110,7 @@ def generate_launch_description():
     )
 
     planner_server = Node(
+        condition=separate,
         package='nav2_planner',
         executable='planner_server',
         name='planner_server',
@@ -81,6 +119,7 @@ def generate_launch_description():
     )
 
     smoother_server = Node(
+        condition=separate,
         package='nav2_smoother',
         executable='smoother_server',
         name='smoother_server',
@@ -89,6 +128,7 @@ def generate_launch_description():
     )
 
     behavior_server = Node(
+        condition=separate,
         package='nav2_behaviors',
         executable='behavior_server',
         name='behavior_server',
@@ -97,6 +137,7 @@ def generate_launch_description():
     )
 
     bt_navigator = Node(
+        condition=separate,
         package='nav2_bt_navigator',
         executable='bt_navigator',
         name='bt_navigator',
@@ -105,6 +146,7 @@ def generate_launch_description():
     )
 
     velocity_smoother = Node(
+        condition=separate,
         package='nav2_velocity_smoother',
         executable='velocity_smoother',
         name='velocity_smoother',
@@ -141,6 +183,7 @@ def generate_launch_description():
     # constant. `lifecycle_settle` remains tunable for pathologically slow
     # environments.
     lifecycle_manager_node = Node(
+        condition=separate,
         package='nav2_lifecycle_manager',
         executable='lifecycle_manager',
         name='lifecycle_manager',
@@ -157,7 +200,44 @@ def generate_launch_description():
                     actions=[lifecycle_manager_node],
                 )
             ],
-        )
+        ),
+        condition=separate,
+    )
+
+    # The composed path. Six servers plus the lifecycle manager in one
+    # process, which removes the problem the settle timer above works around
+    # rather than timing around it: those seven nodes become one DDS
+    # participant instead of seven, so the discovery storm the lifecycle
+    # manager could hang in no longer involves them at all.
+    #
+    # component_container_isolated, not component_container: each component
+    # gets its own single-threaded executor on its own thread. A shared
+    # single-threaded executor deadlocks here, because the lifecycle manager
+    # calls change_state on servers that would be waiting in the same
+    # executor for it to return.
+    #
+    # LoadComposableNodes loads in order, and the lifecycle manager is last,
+    # so it cannot create its service clients before the servers it manages
+    # exist. That is a stronger guarantee than the timer it replaces — an
+    # ordering rather than a wait — which is why no settle delay appears on
+    # this path.
+    nav2_container = Node(
+        condition=IfCondition(use_composition),
+        name='nav2_container',
+        package='rclcpp_components',
+        executable='component_container_isolated',
+        parameters=[nav2_params],
+        output='screen',
+    )
+
+    load_nav2_components = LoadComposableNodes(
+        condition=IfCondition(use_composition),
+        target_container='/nav2_container',
+        composable_node_descriptions=[
+            ComposableNode(package=package, plugin=plugin, name=name,
+                           parameters=[nav2_params])
+            for package, plugin, name in NAV2_COMPONENTS
+        ],
     )
 
     return LaunchDescription(
@@ -183,7 +263,17 @@ def generate_launch_description():
                 description='Seconds to wait after the last managed node '
                 'starts before the lifecycle manager creates its service '
                 'clients. Counted from node start, not from launch, so it '
-                'tracks host speed. Raise it on a pathologically slow host.',
+                'tracks host speed. Raise it on a pathologically slow host. '
+                'Only applies when use_composition is false — the composed '
+                'path orders the loads instead of waiting.',
+            ),
+            DeclareLaunchArgument(
+                name='use_composition',
+                default_value='false',
+                description='Load the nav2 servers into a single '
+                'component container instead of running each as its own '
+                'process. Set false to isolate a crashing server, or to '
+                'compare against the process-per-node baseline.',
             ),
             controller_server,
             planner_server,
@@ -193,5 +283,7 @@ def generate_launch_description():
             velocity_smoother,
             twist_to_stamped,
             lifecycle_manager,
+            nav2_container,
+            load_nav2_components,
         ]
     )

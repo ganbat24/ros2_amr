@@ -138,6 +138,7 @@ def generate_launch_description():
             'use_sim_time': use_sim_time,
             'params_file': params_file,
             'bt_xml_filename': bt_xml_filename,
+            'use_composition': LaunchConfiguration('use_composition'),
         }.items(),
     )
 
@@ -246,6 +247,13 @@ def generate_launch_description():
                 name='bt_xml_filename',
                 default_value=default_bt_xml_path,
                 description='Behavior tree XML file',
+            ),
+            DeclareLaunchArgument(
+                name='use_composition',
+                default_value='false',
+                description='Run the nav2 servers inside one component '
+                'container instead of one process each. Set false to '
+                'isolate a crashing server.',
             ),
             rsp_launch,
             gazebo_sim_launch,

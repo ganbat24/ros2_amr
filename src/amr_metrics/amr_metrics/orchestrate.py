@@ -38,6 +38,12 @@ STACK_PROCESS_NAMES = [
     'behavior_server', 'bt_navigator', 'velocity_smoother',
     'collision_monitor', 'waypoint_follower', 'lifecycle_manager',
     'parameter_bridge', 'twist_to_stamped.py', 'async_slam_toolbox_node',
+    # With use_composition the six nav2 servers and their lifecycle manager
+    # live inside this one process and none of the names above match it.
+    # Missing it would leave a whole composed nav2 stack running after a
+    # teardown that reported success — the overlapping-stack failure this
+    # list exists to prevent, in a new disguise.
+    'component_container',
 ]
 
 # Never kill these, whatever else they match. Several of the names above are
