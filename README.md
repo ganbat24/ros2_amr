@@ -270,14 +270,29 @@ four-goal tour succeeds 4/4** — g1 top-right, g2 top-left, g3
 bottom-right, g4 home — every leg crossing at least one door (D1 and the
 W2 gap into the top-right room), each final pose within 0.25 m.
 
-Repeatable: **three consecutive tours, 12/12 goals**, no aborts.
+Repeatable over a **ten-tour campaign: 40/40 goals, 10/10 tours, no
+aborts and no retries** (2026-08-14, `9b48dd6`, 12-core WSL2, RTF 1.0).
+Every run came from the same commit with a clean working tree, which the
+harness checks and reports rather than assumes:
 
-| goal | wall time (3 runs) |
-|---|---|
-| g1 top-right | 78 / 84 / 82 s |
-| g2 top-left | 56 / 58 / 59 s |
-| g3 bottom-right | 159 / 150 / 154 s |
-| g4 home | 71 / 120 / 75 s |
+| goal | success | median | min–max |
+|---|---|---|---|
+| g1 top-right | 10/10 | 100 s | 76–148 s |
+| g2 top-left | 10/10 | 62 s | 56–75 s |
+| g3 bottom-right | 10/10 | 172 s | 135–231 s |
+| g4 home | 10/10 | 74 s | 71–94 s |
+
+Reproduce with:
+
+```bash
+ros2 run amr_metrics orchestrate --campaign 10 --out-dir /tmp/camp
+ros2 run amr_metrics tour_stats /tmp/camp/run_* --markdown
+```
+
+The spread matters as much as the median: g3 varies by 96 s across
+identical runs, so any tuning claim resting on a single tour is inside the
+noise. This project has made that mistake and the campaign tooling exists
+because of it.
 
 Committed report `docs/validation/metrics_report_full_tour.png` covers a
 240 s (sim time) tour on a 12-core WSL2 host. Measured over the run:
