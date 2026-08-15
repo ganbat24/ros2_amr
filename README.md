@@ -67,6 +67,7 @@ See [Architecture Overview](docs/architecture.md) for the system diagram, packag
 | `amr_localization` | EKF (`robot_localization`), SLAM Toolbox, AMCL, map server configs |
 | `amr_navigation` | Nav2 parameter composition — Smac 2D global planner, DWB local planner, recovery behaviors |
 | `amr_bringup` | Top-level `system.launch.py` that wires all sub-launches together |
+| `amr_metrics` | Validation tours and campaigns, SLAM map scoring, health probes, plots |
 
 ## Build & Development
 
@@ -116,7 +117,7 @@ must be the *isolated* variant.
 
 This launches, in order:
 1. `robot_state_publisher` (no `joint_state_publisher` — Gazebo provides `/joint_states`)
-2. Gazebo Harmonic (empty world) + robot spawn
+2. Gazebo Harmonic (`amr_office.sdf` by default) + robot spawn
 3. `joint_state_broadcaster` + `diff_drive_controller` via spawners (the
    `gz_ros2_control` plugin creates the `controller_manager`)
 4. Sensor bridges (LiDAR, IMU, camera) + `image_proc` rectify
