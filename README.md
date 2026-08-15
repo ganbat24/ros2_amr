@@ -12,6 +12,7 @@ Professional ROS 2 Jazzy AMR stack for differential-drive mobile robots — simu
 - [Package Overview](#package-overview)
 - [Build & Development](#build--development)
 - [Simulation Bringup](#simulation-bringup)
+- [Waypoint Following](#waypoint-following)
 - [Visualization](#visualization)
 - [Controller Tuning](#controller-tuning)
 - [TF Tree](#tf-tree)
@@ -100,7 +101,18 @@ ros2 launch amr_bringup system.launch.py use_slam:=true
 
 # Headless (server-only) Gazebo, no GUI
 ros2 launch amr_bringup system.launch.py headless:=true
+
+# Nav2 servers in a single component container instead of one process each
+ros2 launch amr_bringup system.launch.py use_composition:=true
 ```
+
+`use_composition:=true` loads the six Nav2 servers and their lifecycle
+manager into one `component_container_isolated`. They become a single DDS
+participant, which removes the discovery race that the process-per-node
+path handles with a settle delay — the composed path orders the component
+loads instead of waiting, with the lifecycle manager last. See
+[Architecture](docs/architecture.md#process-layout) for why the container
+must be the *isolated* variant.
 
 This launches, in order:
 1. `robot_state_publisher` (no `joint_state_publisher` — Gazebo provides `/joint_states`)
@@ -129,6 +141,23 @@ subscribes to.
 # Or drive the robot directly (repeat at >2 Hz: cmd_vel_timeout is 0.5 s)
 ros2 topic pub -r 5 /cmd_vel geometry_msgs/Twist "{linear: {x: 0.2}}"
 ```
+
+## Waypoint Following
+
+`waypoint_follower` drives a route continuously rather than one goal at a
+time, dispatching a `navigate_to_pose` per waypoint. `number_of_loops`
+repeats the route inside a single action call, which is how the long
+autonomy run is driven:
+
+```bash
+# five passes of the four-goal route, with per-lap timing and drift
+ros2 run amr_metrics orchestrate --tour --autonomy --loops 4 \
+  --out-dir /tmp/amr_autonomy
+```
+
+`stop_on_failure` is false, so a missed waypoint is recorded in the result
+and the route continues — how many of N it reached is the measurement, and
+ending the run on the first miss would discard it.
 
 ## Visualization
 
