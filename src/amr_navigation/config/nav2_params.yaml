@@ -91,10 +91,14 @@ controller_server:
       linear_granularity: 0.05
       angular_granularity: 0.025
       xy_goal_tolerance: 0.25
-      path_length_tolerance: 1.0
       trans_stopped_velocity: 0.25
       short_circuit_trajectory_evaluation: True
-      stateful: True
+      # `path_length_tolerance: 1.0` and `stateful: True` used to sit here and
+      # were both dead (audited 2026-08-14 against a live controller_server:
+      # 53 keys in YAML, 2 undeclared). path_length_tolerance is declared by
+      # no installed nav2 library at all. `stateful` is real but belongs to
+      # SimpleGoalChecker, where it is already set correctly above — reading
+      # it here suggested DWB had a stateful mode that it does not.
       critics: ["RotateToGoal", "Oscillation", "BaseObstacle", "GoalAlign", "PathAlign", "PathDist", "GoalDist"]
       # 0.05 made the obstacle critic nearly inert: the robot hugged
       # O1/wall inflation because path critics dominated. 0.2 keeps
@@ -193,8 +197,18 @@ smoother_server:
 behavior_server:
   ros__parameters:
     use_sim_time: true
-    costmap_topic: local_costmap/costmap
-    footprint_topic: local_costmap/published_footprint
+    # `costmap_topic` and `footprint_topic` used to be set here. Neither is
+    # declared by behavior_server in this release — it declares
+    # local_costmap_topic / local_footprint_topic (and the global pair).
+    #
+    # Worth keeping the reason they are deleted rather than renamed. The value
+    # this file asked for was `local_costmap/costmap`; the real default is
+    # `local_costmap/costmap_raw`, which is the nav2_msgs/Costmap topic the
+    # behaviors actually consume. Renaming the key to the declared name while
+    # keeping that value would have pointed the recovery behaviours at a topic
+    # that does not carry what they need — so the wrong name was the only
+    # thing preventing a real breakage, and "fixing" it carelessly is worse
+    # than leaving it. Defaults are correct here; say nothing.
     cycle_frequency: 10.0
     behavior_plugins: ["spin", "backup", "drive_on_heading", "wait"]
     spin:
