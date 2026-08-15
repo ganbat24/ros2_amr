@@ -209,7 +209,7 @@ See the contributing guidelines in the project documentation.
 The stack is a **working simulation baseline**: the full pipeline
 (control, sensors, localization, navigation) is verified live in Docker
 on Jazzy + Gazebo Harmonic. `colcon test` over the eight `amr_*`
-packages reports **97 test cases across 40 CTest targets, 0 errors and
+packages reports **114 test cases across 40 CTest targets, 0 errors and
 0 failures** (measured 2026-08-14; the two counts differ because each
 ament lint target expands into one case per file, and the workspace's
 vendored `gz_ros2_control` overlay is excluded). SLAM Toolbox mapping is selectable via
