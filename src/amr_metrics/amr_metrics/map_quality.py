@@ -98,13 +98,22 @@ def distance_to_rects(x, y, rects):
 
 
 def dilate(mask, radius_cells):
-    """True where any cell within a square radius is True (numpy only)."""
+    """True where any cell within a square radius is True (numpy only).
+
+    Shifts by slicing rather than np.roll: roll wraps, so an occupied cell on
+    one edge of the map would count as covering a wall on the opposite edge.
+    Rare, but it would inflate coverage — the metric's optimistic direction.
+    """
     if radius_cells <= 0:
         return mask
-    out = mask.copy()
+    rows, cols = mask.shape
+    out = np.zeros_like(mask)
     for di in range(-radius_cells, radius_cells + 1):
         for dj in range(-radius_cells, radius_cells + 1):
-            out |= np.roll(np.roll(mask, di, axis=0), dj, axis=1)
+            out[max(0, di):rows - max(0, -di),
+                max(0, dj):cols - max(0, -dj)] |= \
+                mask[max(0, -di):rows - max(0, di),
+                     max(0, -dj):cols - max(0, dj)]
     return out
 
 

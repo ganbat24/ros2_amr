@@ -86,3 +86,19 @@ def test_dilate_grows_a_single_cell_by_the_radius():
     assert dilate(mask, 1).sum() == 9        # 3x3 block
     assert dilate(mask, 1)[1, 1]
     assert not dilate(mask, 1)[0, 0]
+
+
+def test_dilate_does_not_wrap_around_the_map_edges():
+    """
+    A cell on one edge must not count as covering the opposite edge.
+
+    np.roll would wrap, and the error is in the optimistic direction: it
+    inflates wall coverage, so the map scores better than it is.
+    """
+    mask = np.zeros((5, 5), dtype=bool)
+    mask[0, 0] = True
+
+    grown = dilate(mask, 1)
+
+    assert grown.sum() == 4                  # corner: 2x2, not 3x3
+    assert not grown[4, 4] and not grown[4, 0] and not grown[0, 4]
