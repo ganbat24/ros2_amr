@@ -306,8 +306,12 @@ def save_and_score_map(out_dir):
     """
     stem = os.path.join(out_dir, 'slam_map')
     print('== saving SLAM map ==', flush=True)
-    saved = _sh('ros2 run nav2_map_server map_saver_cli -f "%s" '
-                '--ros-args -p save_map_timeout:=60.0' % stem, timeout=120)
+    # Documented CLI arguments only. save_map_timeout belongs to the map_saver
+    # *server*, not this CLI — the string does not appear in map_saver_cli or
+    # libmap_saver_core.so, and passing an undeclared parameter is exactly the
+    # silent no-op this project keeps being bitten by.
+    saved = _sh('ros2 run nav2_map_server map_saver_cli -f "%s" -t /map'
+                % stem, timeout=120)
     if not os.path.exists(stem + '.yaml'):
         print('  map_saver_cli produced no map; skipping scoring', flush=True)
         print('  %s' % (saved.stderr.strip().splitlines() or [''])[-1],
