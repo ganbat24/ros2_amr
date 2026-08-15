@@ -201,18 +201,24 @@ def main():
 
     csv_path = os.path.join(args.out_dir, 'traj.csv')
     print('== recording to %s ==' % csv_path)
+    # start_wall must be the recorder's own t=0, not the moment the route is
+    # dispatched: the CSV's wall_t is relative to when the recorder started,
+    # and lap boundaries are absolute. Taking it after the settle below would
+    # shift every lap bucket by that settle, quietly attributing the first
+    # seconds of each lap to the previous one.
+    start_wall = time.time()
     recorder = subprocess.Popen(
         ['python3', os.path.join(os.path.dirname(__file__),
                                  'record_trajectory.py'),
          csv_path, '--duration', str(args.record_duration)],
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     time.sleep(3)
-    start_wall = time.time()
 
     print('== waypoint route: %s (%d extra loop(s)) =='
           % (' -> '.join(names), args.loops), flush=True)
+    route_start = time.time()
     status, result, counter = follow(route, args.loops, args.timeout)
-    elapsed = time.time() - start_wall
+    elapsed = time.time() - route_start
 
     recorder.terminate()
     try:
