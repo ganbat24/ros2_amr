@@ -59,16 +59,47 @@ def is_stale(clock_now, stamp):
 
 
 class TfRestamper(Node):
+    """
+    Re-stamps stale odom->base_link transforms, and reports how often.
+
+    The counters exist so this node's necessity is a measurement rather than
+    an assumption. Its sibling `scan_restamp` was carried for months on the
+    belief that it was fixing dropped scans while it was in fact causing
+    them; nothing here logged enough to tell the difference either way.
+
+    If `restamped` stays at 0 across a full run, this node is provably inert
+    on that host and should be removed rather than kept "just in case".
+    """
+
+    REPORT_PERIOD_S = 30.0
+
     def __init__(self):
         super().__init__('tf_restamper')
         self.clock_now = None
+        self.seen = 0
+        self.restamped = 0
+        self.max_lag_ns = 0
         self.sub_tf = self.create_subscription(
             TFMessage, '/tf', self.on_tf, 10)
         self.sub_clock = self.create_subscription(
             Clock, '/clock', self.on_clock, 10)
         self.pub = self.create_publisher(TFMessage, '/tf', 10)
+        # Wall-clock timer on purpose: this reports on the node's own
+        # behaviour, and must keep reporting even if /clock stalls — which is
+        # exactly the condition worth hearing about.
+        self.timer = self.create_timer(self.REPORT_PERIOD_S, self.report)
         self.get_logger().info(
             're-stamping stale odom->base_link transforms at /clock time')
+
+    def report(self):
+        if not self.seen:
+            self.get_logger().info('no odom->base_link transforms seen yet')
+            return
+        self.get_logger().info(
+            'odom->base_link seen=%d restamped=%d (%.1f%%) max_lag=%.3f s'
+            % (self.seen, self.restamped,
+               100.0 * self.restamped / self.seen,
+               self.max_lag_ns / 1e9))
 
     def on_clock(self, msg):
         self.clock_now = msg.clock
@@ -81,10 +112,24 @@ class TfRestamper(Node):
             return
         republished = False
         for t in msg.transforms:
-            if (t.header.frame_id == 'odom'
-                    and t.child_frame_id == 'base_link'
-                    and self._is_stale(t.header.stamp)):
+            if (t.header.frame_id != 'odom'
+                    or t.child_frame_id != 'base_link'):
+                continue
+            # Count every candidate, not only the ones acted on: "seen 12000,
+            # restamped 0" is the result that retires this node, and it is
+            # indistinguishable from "never ran" without the denominator.
+            #
+            # This node's own republications land back on its subscription
+            # (see the scope guard above), so when restamped > 0 each one
+            # inflates `seen` by one and the percentage reads low. That does
+            # not touch the decisive case: if restamped is 0 there are no
+            # echoes, and `seen` is the true count.
+            self.seen += 1
+            lag = _stamp_ns(self.clock_now) - _stamp_ns(t.header.stamp)
+            self.max_lag_ns = max(self.max_lag_ns, lag)
+            if self._is_stale(t.header.stamp):
                 t.header.stamp = self.clock_now
+                self.restamped += 1
                 republished = True
         if republished:
             self.pub.publish(msg)
