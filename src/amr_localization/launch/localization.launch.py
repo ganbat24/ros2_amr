@@ -243,10 +243,13 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument(
                 name='use_tf_restamp',
-                default_value='true',
-                description='Run the odom->base_link TF restamper. Added '
-                'against controller-clock lag on a constrained host; set '
-                'false to measure whether it is still needed.',
+                default_value='false',
+                description='Run the odom->base_link TF restamper. Off by '
+                'default: measured inert on the 12-core host (7725 '
+                'transforms seen, 0 restamped, max lag 0.050 s against a '
+                '0.5 s trigger). Set true on a host slow enough for the '
+                'controller clock to lag /clock by seconds, and check the '
+                "node's own counters rather than assuming it is helping.",
             ),
             DeclareLaunchArgument(
                 name='lifecycle_settle',

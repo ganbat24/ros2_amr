@@ -228,8 +228,10 @@ def generate_launch_description():
             # tool in amr_metrics.
             DeclareLaunchArgument(
                 name='use_tf_restamp',
-                default_value='true',
-                description='Run the odom->base_link TF restamper',
+                default_value='false',
+                description='Run the odom->base_link TF restamper. Off by '
+                'default: measured inert on this host (0 of 7725 transforms '
+                'needed restamping). See localization.launch.py.',
             ),
             DeclareLaunchArgument(
                 name='use_scan_restamp',
