@@ -125,6 +125,29 @@ its own executor on its own thread. A shared single-threaded executor
 deadlocks: the lifecycle manager calls `change_state` on servers that would be
 waiting in the same executor for that call to return.
 
+### Which one is the default, and why
+
+**Process-per-node remains the default.** Composition is validated, not
+preferred, and the measurements are the reason:
+
+| | process-per-node | composed |
+|---|---|---|
+| tour result (3 runs each, same commit) | 10/12 goals | 12/12 goals |
+| bring-up to `active` | 15 / 18 / 15 / 22 s | 14 / 15 / 15 / 23 s |
+| nav2 processes | 8 | 1 |
+
+Composition shows no regression, and at N=3 that is all it shows — 12/12
+against 10/12 is well inside the run-to-run spread this world produces. What
+it does *not* show is any benefit worth changing a default for: bring-up is
+unchanged, because the discovery race composition would remove was already
+removed by event-sequenced start-up, and nav2's components do not enable
+intra-process transport here, so there is no data-path win either.
+
+Against that, process-per-node keeps failure isolation and per-node logs,
+which matter in a stack whose main activity is diagnosis. Flipping a default
+on a change with a measured benefit of zero is the move this project has
+repeatedly been burned by, so the default stays and the option is documented.
+
 `robot_localization`'s EKF is not a composable component in this release and
 stays a separate process either way, as do the Python shims
 (`twist_to_stamped`, `tf_restamp`).

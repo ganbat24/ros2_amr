@@ -96,11 +96,20 @@ def generate_launch_description():
         convert_types=True,
     )
 
-    # Two ways to run the same six servers. `use_composition:=false` starts
-    # each as its own process; `true` loads them all into one container.
-    # Process-per-node remains the default until a composed campaign has been
-    # measured against the process-per-node baseline — the capability landing
-    # is not the same thing as the capability being better here.
+    # Two ways to run the same servers. `use_composition:=false` starts each
+    # as its own process; `true` loads them all into one container.
+    #
+    # Measured 2026-08-14, three tours each at the same commit: composed
+    # 12/12 goals, process-per-node 10/12, bring-up to active 14/15/15/23 s
+    # against 15/18/15/22 s. So composition does not regress anything, and at
+    # N=3 that is all it shows. It also buys nothing measurable here: the
+    # discovery race it would remove was already removed by event-sequenced
+    # start-up, and nav2's components do not enable intra-process transport,
+    # so there is no data-path win either.
+    #
+    # Default stays process-per-node, which keeps failure isolation and
+    # per-node logs — worth more in a stack whose main activity is diagnosis
+    # than a structural tidiness with no measured effect.
     separate = UnlessCondition(use_composition)
 
     controller_server = Node(
