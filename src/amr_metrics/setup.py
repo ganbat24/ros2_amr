@@ -30,6 +30,7 @@ setup(
             'tour_stats = amr_metrics.tour_stats:main',
             'map_quality = amr_metrics.map_quality:main',
             'run_waypoints = amr_metrics.run_waypoints:main',
+            'goal_report = amr_metrics.goal_report:main',
         ],
     },
 )

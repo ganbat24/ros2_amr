@@ -297,6 +297,29 @@ def capture_environment(out_dir):
     return env
 
 
+def preserve_launch_log(out_dir, log_path='/tmp/amr_launch.log'):
+    """Copy this run's launch output into the run directory.
+
+    Every launch overwrites /tmp/amr_launch.log, so in a campaign only the
+    last run's log survives. That is precisely backwards: the run worth
+    diagnosing is a failed one, and by the time the campaign summary shows it
+    the evidence has been overwritten by the runs that followed.
+
+    Diagnosing a failed goal in this project means isolating the WARN/ERROR
+    lines between its dispatch and its failure and counting them by type — a
+    lone warning names the cause, a flood points elsewhere. That method needs
+    the log of the run that failed, not of the one that happened to be last.
+    """
+    for source, name in ((log_path, 'launch.log'),
+                         (os.path.expanduser('~/.ros/log/latest/launch.log'),
+                          'ros_launch.log')):
+        try:
+            if os.path.exists(source):
+                shutil.copy(source, os.path.join(out_dir, name))
+        except OSError as exc:
+            print('  (could not preserve %s: %s)' % (source, exc), flush=True)
+
+
 def save_and_score_map(out_dir):
     """Save the live SLAM map and score it against the simulated floorplan.
 
@@ -486,6 +509,7 @@ def main():
             result = subprocess.run(measure)
             if args.use_slam:
                 save_and_score_map(args.out_dir)
+            preserve_launch_log(args.out_dir)
             return result.returncode
         finally:
             # Always tear the stack down. A tour that leaves 25 processes and

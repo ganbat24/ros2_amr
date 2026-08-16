@@ -192,17 +192,22 @@ def main():
     for g in goals:
         x, y = GOAL_POSES[g]
         print('  -> %s (%.1f, %.1f)' % (g, x, y), flush=True)
+        # Absolute dispatch/finish times, so a failed goal's own window can be
+        # cut out of the launch log afterwards. Isolating that window is the
+        # method that actually found the causes in this stack; without the
+        # timestamps it can only be done by hand, live, while it fails.
+        started = time.time()
         status, wall = send_goal(x, y, args.per_goal_timeout)
-        results[g] = (status, wall)
+        results[g] = (status, wall, started, time.time())
         print('     %s in %.0f s wall' % (status, wall), flush=True)
         settle(after_failure=(status != 'SUCCEEDED'))
 
     rec.terminate()
     rec.wait(timeout=10)
     print('== results ==')
-    for g, (s, w) in results.items():
+    for g, (s, w, _, _) in results.items():
         print('  %-14s %-9s %.0f s' % (g, s, w))
-    n_succ = sum(1 for s, _ in results.values() if s == 'SUCCEEDED')
+    n_succ = sum(1 for s, _, _, _ in results.values() if s == 'SUCCEEDED')
     print('tour: %d/%d goals succeeded' % (n_succ, len(goals)))
 
     # Machine-readable, because a repeatability claim needs a campaign and a
@@ -211,8 +216,9 @@ def main():
         json.dump({
             'goals': [
                 {'goal': g, 'x': GOAL_POSES[g][0], 'y': GOAL_POSES[g][1],
-                 'status': s, 'wall_s': round(w, 1)}
-                for g, (s, w) in results.items()
+                 'status': s, 'wall_s': round(w, 1),
+                 'started_epoch': round(t0, 3), 'ended_epoch': round(t1, 3)}
+                for g, (s, w, t0, t1) in results.items()
             ],
             'succeeded': n_succ,
             'total': len(goals),
