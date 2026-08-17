@@ -8,7 +8,46 @@ boundaries derived from feedback, and the per-lap error bucketing that turns
 """
 import time
 
-from amr_metrics.run_waypoints import LapCounter, amcl_error_by_lap
+import numpy as np
+
+from amr_metrics.map_quality import distance_to_rects
+from amr_metrics.plot_metrics import OBSTACLES, WALLS
+from amr_metrics.run_waypoints import MAPPING_ROUTE, LapCounter, amcl_error_by_lap
+
+
+def test_mapping_route_clears_the_world_geometry():
+    """
+    Every mapping waypoint must sit at least 0.5 m from anything solid.
+
+    Checked against the floorplan parsed from the generated world, not a
+    copy of it, so editing the world cannot leave this route quietly
+    pointing into a wall. 0.5 m is robot_radius (0.25) plus margin; a
+    waypoint inside inflation is one the planner may refuse outright.
+    """
+    solids = list(WALLS) + list(OBSTACLES)
+    assert solids, 'no floorplan parsed — the check would pass vacuously'
+
+    for x, y in MAPPING_ROUTE:
+        clearance = float(distance_to_rects(
+            np.array([[float(x)]]), np.array([[float(y)]]), solids)[0, 0])
+        assert clearance >= 0.5, (
+            'mapping waypoint (%.1f, %.1f) is %.2f m from solid geometry'
+            % (x, y, clearance))
+
+
+def test_mapping_route_steps_are_short_enough_to_plan_through():
+    """
+    Consecutive waypoints must be close enough to stay inside mapped space.
+
+    The goal tour fails under SLAM precisely because its first goal is 8 m
+    away in unseen space — g1/g2/g3 aborted 3-6 s after dispatch. Keeping
+    steps short is the whole reason this route exists, so it is worth
+    failing a test over rather than rediscovering in a 12-minute run.
+    """
+    for (x0, y0), (x1, y1) in zip(MAPPING_ROUTE, MAPPING_ROUTE[1:]):
+        step = ((x1 - x0) ** 2 + (y1 - y0) ** 2) ** 0.5
+        assert step <= 3.0, (
+            'step (%.1f, %.1f) -> (%.1f, %.1f) is %.1f m' % (x0, y0, x1, y1, step))
 
 
 def test_lap_counter_starts_at_one_lap():

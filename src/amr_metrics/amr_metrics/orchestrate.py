@@ -383,6 +383,8 @@ def run_campaign(args):
             cmd += ['--use-slam']
         if args.autonomy:
             cmd += ['--autonomy', '--loops', str(args.loops)]
+            if args.route:
+                cmd += ['--route', args.route]
         try:
             subprocess.run(cmd, timeout=3600)
         except subprocess.TimeoutExpired:
@@ -428,6 +430,9 @@ def main():
                          'goal-at-a-time tour (see --loops)')
     ap.add_argument('--loops', type=int, default=0,
                     help='extra repeats of the route for --autonomy')
+    ap.add_argument('--route', default='',
+                    help='route for --autonomy: comma-separated goal names, '
+                         'or "mapping" for the SLAM coverage route')
     ap.add_argument('--use-slam', action='store_true',
                     help='map with slam_toolbox instead of localising with '
                          'AMCL; after the tour, save the map and score it '
@@ -506,6 +511,8 @@ def main():
             print('== waypoint autonomy run ==')
             measure = [sys.executable, '-m', 'amr_metrics.run_waypoints',
                        '--out-dir', args.out_dir, '--loops', str(args.loops)]
+            if args.route:
+                measure += ['--route', args.route]
         else:
             print('== validation tour ==')
             measure = [sys.executable, '-m', 'amr_metrics.run_validation',

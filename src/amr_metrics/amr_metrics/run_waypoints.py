@@ -35,6 +35,31 @@ from amr_metrics.run_validation import GOAL_POSES
 
 DEFAULT_ROUTE = 'g1_top_right,g2_top_left,g3_bottom_right,g4_home'
 
+# A coverage route for building a map, as distinct from the goal tour.
+#
+# The goal tour is the wrong instrument for SLAM and measurably so: run with
+# --use-slam it scored 1/4, with g1/g2/g3 aborting 3-6 s after dispatch. Those
+# are planning failures, not navigation failures — the tour sends the robot to
+# fixed coordinates 8 m away in a world it has not seen yet, and slam_toolbox
+# starts with an empty map. Only g4, near the start pose, succeeded, and the
+# resulting map covered 16% of the floor.
+#
+# Waypoints here are ~2 m apart, so each one is inside or adjacent to already
+# mapped space and the planner always has something to plan through. Every
+# point is at least 0.5 m clear of the generated world's walls and obstacles:
+# W1 at y 3.9-4.1 with door D1 spanning x 4.4-6.9, W2 at x 7.7-7.9 spanning
+# y 4.1-6.2 with the gap above it, and obstacles O1-O4. The route runs the
+# bottom room west to east, back through D1 into the top-left, west and north,
+# then through the W2 gap into the top-right room and home.
+MAPPING_ROUTE = [
+    (2.5, 1.2), (5.0, 1.2), (7.2, 1.2), (9.2, 1.2),
+    (9.2, 3.0), (7.0, 3.0), (5.6, 3.0),
+    (5.6, 5.2), (3.5, 5.2), (1.2, 5.2),
+    (1.0, 7.3), (3.5, 7.3), (6.0, 7.3),
+    (8.8, 7.2), (9.4, 5.9), (8.8, 7.2),
+    (6.0, 7.3), (5.6, 5.2), (5.6, 2.5), (3.0, 1.2), (1.5, 1.5),
+]
+
 
 def make_pose(x, y):
     from geometry_msgs.msg import PoseStamped
@@ -157,7 +182,9 @@ def follow(route_poses, loops, timeout_s):
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     ap.add_argument('--out-dir', default='/tmp/amr_autonomy')
-    ap.add_argument('--route', default=DEFAULT_ROUTE)
+    ap.add_argument('--route', default=DEFAULT_ROUTE,
+                    help='comma-separated goal names, or "mapping" for the '
+                         'coverage route used to build a SLAM map')
     ap.add_argument('--loops', type=int, default=0,
                     help='extra repeats of the route beyond the first pass; '
                          'nav2 semantics, reported against observed laps')
@@ -166,11 +193,15 @@ def main():
     ap.add_argument('--no-plot', action='store_true')
     args = ap.parse_args()
 
-    names = [g for g in args.route.split(',') if g in GOAL_POSES]
-    if not names:
-        print('no valid goals in --route %r' % args.route)
-        return 1
-    route = [GOAL_POSES[g] for g in names]
+    if args.route == 'mapping':
+        route = list(MAPPING_ROUTE)
+        names = ['wp%02d' % i for i in range(1, len(route) + 1)]
+    else:
+        names = [g for g in args.route.split(',') if g in GOAL_POSES]
+        if not names:
+            print('no valid goals in --route %r' % args.route)
+            return 1
+        route = [GOAL_POSES[g] for g in names]
 
     import rclpy
     print('== drive-chain readiness gate ==')
