@@ -46,15 +46,17 @@ controller_server:
     progress_checker:
       plugin: "nav2_controller::SimpleProgressChecker"
       required_movement_radius: 0.5
-      # 10.0 was tuned on the 2-vCPU host; on live WSL2 runs the robot was
-      # observed oscillating/slow-progressing near the W2 door corner while
-      # spin/backup/wait recoveries each "completed successfully" without
-      # resolving the stall — the checker was firing before those recoveries
-      # got a real chance to help. 20.0 gives more slack before declaring
-      # failure and entering another recovery cycle. Observed harmless, but
-      # it did not by itself convert any failing goal — do not credit it
-      # with more than it earned.
-      movement_time_allowance: 20.0
+      # Back to 10.0. It was raised to 20.0 while the robot was oscillating
+      # near the W2 door corner and recoveries were "completing successfully"
+      # without resolving a stall — but that behaviour was the DWB Align
+      # critics making a stationary trajectory optimal, and the comment here
+      # already admitted 20.0 never converted a failing goal on its own.
+      #
+      # Once the real cause was fixed, the justification for the deviation
+      # went with it. Measured 2026-08-14, three tours with this at 10.0 and
+      # cost_travel_multiplier at 1.0: 12/12 goals, per-goal medians inside
+      # the ten-tour baseline's ranges.
+      movement_time_allowance: 10.0
     goal_checker:
       plugin: "nav2_controller::SimpleGoalChecker"
       xy_goal_tolerance: 0.25
@@ -170,19 +172,26 @@ planner_server:
       max_iterations: -1
       max_on_approach_iterations: 1000
       max_planning_time: 2.0
-      # 2.0 let the path hug inflated cells around obstacle corners
-      # (0.3 m from O1's west face, inside the 0.35 m inflation) — the
-      # DWB's cross-track slop then wedged the robot into the lethal
-      # zone. 4.0 pushes the path toward clear cells.
-      # On WSL2, live runs showed the planner replanning every ~1s and
-      # flip-flopping between two path solutions near the D1/W2 door
-      # corners — consistent with two routes sitting at close to equal
-      # cost so a small change in start pose or costmap noise between
-      # replans tips A* to the other one each time. 6.0 breaks that tie
-      # harder. Evidence is WEAK — a single-tour positive signal, not a
-      # repeated measurement; revisit under a proper multi-run campaign
-      # before treating 6.0 as established.
-      cost_travel_multiplier: 6.0
+      # Back to nav2's default of 1.0 (confirmed live: a planner_server given
+      # no value for this reports 1.0). It had been walked up to 6.0 across
+      # sessions to stop the planner flip-flopping between two near-equal
+      # routes at the D1/W2 door corners, and the comment here already said
+      # the evidence was WEAK — a single-tour signal — and asked for a
+      # multi-run campaign before treating 6.0 as established.
+      #
+      # That campaign was run on 2026-08-14 and did not support it. Three
+      # tours at 1.0 (with movement_time_allowance back at 10.0): 12/12
+      # goals, g3 median 159 s against the ten-tour baseline's 172 s, every
+      # goal's median inside the baseline's min-max. The flip-flopping it was
+      # raised against was a symptom of the crawling controller, and it went
+      # away with the DWB Align critics.
+      #
+      # Evidence strength, stated plainly: this shows no regression at N=3,
+      # not equivalence. What justifies the revert is not that 1.0 is proven
+      # better — it is that the reason for deviating from upstream was
+      # measured against a controller that has since been fixed, so the
+      # deviation no longer has a justification to inherit.
+      cost_travel_multiplier: 1.0
 
 smoother_server:
   ros__parameters:
