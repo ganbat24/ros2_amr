@@ -463,12 +463,22 @@ def main():
     # args.launch_args is left pristine so run_campaign can forward it
     # verbatim alongside --use-slam; folding the flag into it here and then
     # forwarding both appends use_slam:=true twice.
+    # /velocity_smoother is in both lists because the drive-chain probe
+    # publishes plain Twist on /cmd_vel, and that only reaches the wheels
+    # through velocity_smoother -> twist_to_stamped -> diff_drive_controller.
+    # Gating on localisation alone lets the probe run against a command path
+    # that is not up yet: measured 2026-08-14 under SLAM, the probe reported
+    # "odom moved 0.000 m" five times while /odom was publishing at 22 Hz and
+    # velocity_smoother was still `unconfigured`. In AMCL mode this never
+    # showed, because waiting for /amcl and /map_server happens to take long
+    # enough for nav2 to finish activating — the gate was passing on a
+    # coincidence, not a check.
     if args.use_slam:
         effective_launch_args = (args.launch_args + ' use_slam:=true').strip()
-        lifecycle_nodes = ('/slam_toolbox',)
+        lifecycle_nodes = ('/slam_toolbox', '/velocity_smoother')
     else:
         effective_launch_args = args.launch_args
-        lifecycle_nodes = ('/amcl', '/map_server')
+        lifecycle_nodes = ('/amcl', '/map_server', '/velocity_smoother')
 
     if not any([args.teardown, args.launch, args.wait_ready, args.tour,
                 args.campaign]):
