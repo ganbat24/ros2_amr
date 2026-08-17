@@ -191,6 +191,49 @@ def wait_lifecycle_active(nodes=('/amcl', '/map_server'), timeout=180.0):
             rclpy.shutdown()
 
 
+def wait_for_tf(target='map', source='base_link', timeout=90.0):
+    """Block until `target -> source` is available. Returns True if it is.
+
+    The gate used to check lifecycle states and odometry motion and nothing
+    else, so a measurement could start against a stack whose TF tree was not
+    usable yet. That is not hypothetical — it cost three runs on 2026-08-14:
+
+      * a SLAM survey drove 21/21 waypoints and produced no map, because
+        odom -> base_link never existed and slam_toolbox dropped every scan;
+      * a five-lap autonomy run lost its first two laps entirely, 8 waypoints
+        failing with FollowPath TF_ERROR in the first 5 seconds, then ran
+        normally for three laps once TF settled;
+      * nav2's costmaps could not activate for the same underlying reason.
+
+    A lifecycle node reporting `active` says it configured, not that the data
+    it needs has arrived.
+    """
+    import rclpy
+    from rclpy.node import Node as RclpyNode
+    from tf2_ros import Buffer, TransformListener
+
+    started_here = not rclpy.ok()
+    if started_here:
+        rclpy.init()
+    node = RclpyNode('tf_probe')
+    buffer = Buffer()
+    listener = TransformListener(buffer, node)
+    deadline = time.time() + timeout
+    try:
+        while time.time() < deadline:
+            rclpy.spin_once(node, timeout_sec=0.5)
+            if buffer.can_transform(target, source, rclpy.time.Time()):
+                return True
+        print('  %s -> %s never became available in %.0f s'
+              % (target, source, timeout), flush=True)
+        return False
+    finally:
+        del listener
+        node.destroy_node()
+        if started_here:
+            rclpy.shutdown()
+
+
 def wait_drive_ready(retries=5, retry_wait=30.0):
     """Probe the drive chain until odometry proves the feedback path is live.
 
@@ -544,6 +587,13 @@ def main():
             print('== drive-chain readiness ==')
             if not wait_drive_ready():
                 print('  drive chain never became ready; retrying')
+                continue
+            # Lifecycle `active` means configured, not that TF is usable.
+            # Without this a tour can dispatch into a stack whose transforms
+            # have not arrived and lose its first goals to TF_ERROR.
+            print('== TF readiness (map -> base_link) ==')
+            if not wait_for_tf():
+                print('  TF never became usable; retrying')
                 continue
 
         print('== environment ==')
