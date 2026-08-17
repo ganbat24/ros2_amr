@@ -476,6 +476,9 @@ def main():
     ap.add_argument('--attempts', type=int, default=3,
                     help='relaunch attempts if the stack never becomes ready')
     ap.add_argument('--launch-timeout', type=float, default=240.0)
+    # The EKF was measured taking ~46 s to acquire /clock even on a healthy
+    # AMCL run, so this needs real headroom before it means "never".
+    ap.add_argument('--tf-timeout', type=float, default=180.0)
     ap.add_argument('--keep-alive', action='store_true',
                     help='leave the stack running after --tour (default: '
                          'always tear down, so a run cannot pin the machine)')
@@ -588,13 +591,17 @@ def main():
             if not wait_drive_ready():
                 print('  drive chain never became ready; retrying')
                 continue
-            # Lifecycle `active` means configured, not that TF is usable.
-            # Without this a tour can dispatch into a stack whose transforms
-            # have not arrived and lose its first goals to TF_ERROR.
-            print('== TF readiness (map -> base_link) ==')
-            if not wait_for_tf():
-                print('  TF never became usable; retrying')
-                continue
+
+        # Lifecycle `active` means configured, not that TF is usable, and a
+        # measurement that starts without TF cannot produce anything. This
+        # belongs in the gate rather than inside the measurement: the retry
+        # loop only covers readiness failures, so a survey that checked TF
+        # itself aborted the whole run instead of getting another attempt.
+        tf_target = 'odom' if args.survey else 'map'
+        print('== TF readiness (%s -> base_link) ==' % tf_target)
+        if not wait_for_tf(target=tf_target, timeout=args.tf_timeout):
+            print('  TF never became usable; retrying')
+            continue
 
         print('== environment ==')
         capture_environment(args.out_dir)

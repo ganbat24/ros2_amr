@@ -144,7 +144,10 @@ def main():
     ap.add_argument('--out-dir', default='/tmp/amr_slam_survey')
     ap.add_argument('--per-waypoint-timeout', type=float, default=90.0)
     ap.add_argument('--pose-wait', type=float, default=60.0)
-    ap.add_argument('--tf-wait', type=float, default=90.0,
+    # Short by design. orchestrate's gate is the retryable check and waits
+    # much longer; this is a last-line assertion so a survey run standalone
+    # still refuses to drive blind.
+    ap.add_argument('--tf-wait', type=float, default=20.0,
                     help='seconds to wait for odom->base_link before giving '
                          'up; without it slam_toolbox drops every scan')
     args = ap.parse_args()
