@@ -57,11 +57,16 @@ def report_goal(entries, goal, verbose):
     window = [e for e in entries if start <= e[0] <= end
               and e[1] in ('WARN', 'ERROR', 'FATAL')]
 
+    failed = goal['status'] != 'SUCCEEDED'
     print('  %-16s %-9s %6.0f s   %d WARN/ERROR line(s) in its window'
           % (goal['goal'], goal['status'], goal['wall_s'], len(window)))
     if not window:
-        print('      nothing logged — the failure is not visible in the log; '
-              'look at motion_health and the trajectory instead')
+        if failed:
+            print('      nothing logged — this failure is not visible in the '
+                  'log at all; look at motion_health and the trajectory, '
+                  'which is how the crawling controller was eventually found')
+        else:
+            print('      clean')
         return
 
     counts = Counter((node, normalise(msg)) for _, _, node, msg in window)
