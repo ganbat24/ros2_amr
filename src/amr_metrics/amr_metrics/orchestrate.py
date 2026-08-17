@@ -100,9 +100,22 @@ def teardown(verbose=True):
         time.sleep(2)
 
     # A SIGKILLed FastRTPS participant leaves shared-memory segments behind;
-    # on the next launch a new participant (observed: map_server) fails to
-    # bind its SHM port and never becomes discoverable at all.
-    _sh('rm -f /dev/shm/fastrtps_* /dev/shm/sem.fastrtps_* 2>/dev/null')
+    # on the next launch a new participant fails to bind its SHM port and
+    # never becomes discoverable at all. Observed 2026-08-14 as
+    # "Failed init_port fastrtps_port7021: open_and_lock_file failed", after
+    # which the drive chain never came up and a 35-minute autonomy run was
+    # lost across both of its attempts.
+    #
+    # Cleared twice with a pause between. A process killed a moment ago can
+    # still be unwinding and recreate a segment after the first sweep, and a
+    # single rm immediately after SIGKILL loses that race — which is what a
+    # run that fails only sometimes, right after a heavy campaign, looks like.
+    def clear_dds_shm():
+        _sh('rm -f /dev/shm/fastrtps_* /dev/shm/sem.fastrtps_* 2>/dev/null')
+
+    clear_dds_shm()
+    time.sleep(2)
+    clear_dds_shm()
 
     leftover = running_stack_processes()
     if leftover and verbose:
@@ -411,7 +424,11 @@ def main():
                     help='teardown, launch, wait, then run the validation tour')
     ap.add_argument('--out-dir', default='/tmp/amr_validation')
     ap.add_argument('--headless', default='true', choices=['true', 'false'])
-    ap.add_argument('--attempts', type=int, default=2,
+    # 3, not 2: the failure this retries is a DDS shared-memory collision that
+    # clears on a fresh teardown, and losing a 35-minute run to two unlucky
+    # draws happened on 2026-08-14. A retry costs ~90 s; a lost run costs the
+    # whole measurement.
+    ap.add_argument('--attempts', type=int, default=3,
                     help='relaunch attempts if the stack never becomes ready')
     ap.add_argument('--launch-timeout', type=float, default=240.0)
     ap.add_argument('--keep-alive', action='store_true',
