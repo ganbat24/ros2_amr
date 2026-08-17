@@ -273,9 +273,14 @@ def capture_environment(out_dir):
             "grep -o '<real_time_factor>[^<]*' "
             "$(ros2 pkg prefix --share amr_simulation 2>/dev/null)"
             "/worlds/amr_office.sdf 2>/dev/null | head -1 | cut -d'>' -f2"),
+        # Match the scripts themselves, not the substring 'restamp'. The
+        # bare substring also matches the `ros2 launch … use_tf_restamp:=false`
+        # command line, so a run with the restamper explicitly DISABLED
+        # recorded it as running — provenance that states the opposite of the
+        # truth is worse than none.
         'restampers_running': [
             cmd for _, cmd in running_stack_processes()
-            if 'restamp' in cmd
+            if 'tf_restamp.py' in cmd or 'scan_restamp.py' in cmd
         ],
     }
     os.makedirs(out_dir, exist_ok=True)
