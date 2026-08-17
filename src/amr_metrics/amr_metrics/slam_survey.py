@@ -1,0 +1,170 @@
+#!/usr/bin/env python3
+"""Drive the mapping route directly, without nav2, and build a SLAM map.
+
+Mapping does not need a navigation stack, and in this workspace depending on
+one does not work: under `use_slam:=true` nav2's lifecycle manager does not
+finish bringing its nodes up — measured 2026-08-14, `/velocity_smoother` sat
+at `unconfigured` for the full 240 s timeout while `/slam_toolbox` was active.
+An earlier attempt to map with the goal tour scored 1/4 for a related reason:
+it dispatches to coordinates 8 m away in a world slam_toolbox has not seen, so
+the planner has nothing to plan through.
+
+So this drives the wheels itself. It publishes TwistStamped straight to
+/cmd_vel_stamped, which is what diff_drive_controller subscribes to, bypassing
+velocity_smoother and twist_to_stamped along with the whole nav2 stack. The
+only things that need to be up are Gazebo, the controllers and slam_toolbox.
+
+Pose comes from Gazebo ground truth rather than odometry. That is deliberate
+and it is not cheating: the mission is to move the robot over a known-clear
+route so the lidar sees the whole floor. Using drifting odometry to steer
+would put the robot into walls for reasons that have nothing to do with the
+map being measured.
+
+Usage:
+  ros2 run amr_metrics slam_survey --out-dir /tmp/slam_run
+"""
+import argparse
+import math
+import os
+import sys
+import time
+
+from amr_metrics.record_trajectory import PoseParser
+from amr_metrics.run_waypoints import MAPPING_ROUTE
+
+# Deliberately gentle. The point is a clean, well-registered scan sequence,
+# not a fast lap: slam_toolbox matches scans against its graph, and a robot
+# that spins quickly produces scans it cannot register.
+MAX_LIN = 0.35
+MAX_ANG = 0.8
+ARRIVE_TOL = 0.25
+# Above this heading error, turn in place rather than arc — arcing toward a
+# target that is behind the robot sweeps a wide curve into whatever is beside
+# it, and the route's clearances assume roughly straight segments.
+TURN_IN_PLACE = 0.6
+
+
+def wrap(angle):
+    return math.atan2(math.sin(angle), math.cos(angle))
+
+
+def clamp(value, limit):
+    return max(-limit, min(limit, value))
+
+
+class Driver:
+    def __init__(self, node):
+        from geometry_msgs.msg import TwistStamped
+        self.node = node
+        self.msg_type = TwistStamped
+        self.pub = node.create_publisher(TwistStamped, '/cmd_vel_stamped', 10)
+
+    def send(self, linear, angular):
+        msg = self.msg_type()
+        # Sim time: the node is created with use_sim_time, so its clock is
+        # /clock. A wall-clock stamp here would look stale to the controller
+        # and be discarded by its cmd_vel_timeout.
+        msg.header.stamp = self.node.get_clock().now().to_msg()
+        msg.header.frame_id = 'base_link'
+        msg.twist.linear.x = float(linear)
+        msg.twist.angular.z = float(angular)
+        self.pub.publish(msg)
+
+    def stop(self, times=5):
+        for _ in range(times):
+            self.send(0.0, 0.0)
+            time.sleep(0.05)
+
+
+def drive_to(driver, poses, target, timeout, rate_hz=20.0):
+    """Steer to (x, y). Returns (reached, distance_left)."""
+    tx, ty = target
+    deadline = time.time() + timeout
+    period = 1.0 / rate_hz
+    while time.time() < deadline:
+        with poses.lock:
+            pose = poses.pose
+        if pose is None:
+            time.sleep(period)
+            continue
+        _, _, x, y, yaw = pose
+        dx, dy = tx - x, ty - y
+        dist = math.hypot(dx, dy)
+        if dist <= ARRIVE_TOL:
+            driver.stop()
+            return True, dist
+        heading_error = wrap(math.atan2(dy, dx) - yaw)
+        if abs(heading_error) > TURN_IN_PLACE:
+            driver.send(0.0, clamp(1.5 * heading_error, MAX_ANG))
+        else:
+            driver.send(clamp(0.9 * dist, MAX_LIN),
+                        clamp(1.2 * heading_error, MAX_ANG))
+        time.sleep(period)
+    driver.stop()
+    with poses.lock:
+        pose = poses.pose
+    if pose is None:
+        return False, float('inf')
+    return False, math.hypot(tx - pose[2], ty - pose[3])
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
+    ap.add_argument('--out-dir', default='/tmp/amr_slam_survey')
+    ap.add_argument('--per-waypoint-timeout', type=float, default=90.0)
+    ap.add_argument('--pose-wait', type=float, default=60.0)
+    args = ap.parse_args()
+
+    import rclpy
+    from rclpy.node import Node
+
+    rclpy.init()
+    node = Node('slam_survey',
+                parameter_overrides=[
+                    rclpy.parameter.Parameter('use_sim_time', value=True)])
+
+    poses = PoseParser()
+    poses.start()
+    print('== waiting for Gazebo ground truth ==', flush=True)
+    deadline = time.time() + args.pose_wait
+    while time.time() < deadline:
+        with poses.lock:
+            if poses.pose is not None:
+                break
+        time.sleep(0.5)
+    with poses.lock:
+        if poses.pose is None:
+            print('NO GROUND TRUTH POSE — is Gazebo up? aborting.', flush=True)
+            rclpy.shutdown()
+            return 1
+        print('  start pose: (%.2f, %.2f)' % (poses.pose[2], poses.pose[3]),
+              flush=True)
+
+    os.makedirs(args.out_dir, exist_ok=True)
+    driver = Driver(node)
+
+    print('== driving %d mapping waypoints ==' % len(MAPPING_ROUTE), flush=True)
+    reached = 0
+    started = time.time()
+    for index, target in enumerate(MAPPING_ROUTE, 1):
+        ok, left = drive_to(driver, poses, target, args.per_waypoint_timeout)
+        reached += 1 if ok else 0
+        print('  wp%02d (%.1f, %.1f) %s  %.2f m left'
+              % (index, target[0], target[1],
+                 'reached' if ok else 'TIMEOUT', left), flush=True)
+        # Pause so slam_toolbox gets a stationary scan at each vertex; scans
+        # taken mid-turn are the ones it fails to register.
+        driver.stop()
+        time.sleep(1.0)
+
+    driver.stop(times=10)
+    elapsed = time.time() - started
+    print('== survey done: %d/%d waypoints in %.0f s =='
+          % (reached, len(MAPPING_ROUTE), elapsed), flush=True)
+    node.destroy_node()
+    rclpy.shutdown()
+    return 0 if reached == len(MAPPING_ROUTE) else 2
+
+
+if __name__ == '__main__':
+    sys.exit(main())

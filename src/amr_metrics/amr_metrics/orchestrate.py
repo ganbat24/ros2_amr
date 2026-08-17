@@ -394,6 +394,8 @@ def run_campaign(args):
         # the wrong stack, and never saves a map.
         if args.use_slam:
             cmd += ['--use-slam']
+        if args.survey:
+            cmd += ['--survey']
         if args.autonomy:
             cmd += ['--autonomy', '--loops', str(args.loops)]
             if args.route:
@@ -450,6 +452,9 @@ def main():
     ap.add_argument('--route', default='',
                     help='route for --autonomy: comma-separated goal names, '
                          'or "mapping" for the SLAM coverage route')
+    ap.add_argument('--survey', action='store_true',
+                    help='drive the mapping route directly (no nav2) and '
+                         'score the resulting map; implies --use-slam')
     ap.add_argument('--use-slam', action='store_true',
                     help='map with slam_toolbox instead of localising with '
                          'AMCL; after the tour, save the map and score it '
@@ -473,9 +478,14 @@ def main():
     # showed, because waiting for /amcl and /map_server happens to take long
     # enough for nav2 to finish activating — the gate was passing on a
     # coincidence, not a check.
+    if args.survey:
+        args.use_slam = True
     if args.use_slam:
         effective_launch_args = (args.launch_args + ' use_slam:=true').strip()
-        lifecycle_nodes = ('/slam_toolbox', '/velocity_smoother')
+        # A survey drives /cmd_vel_stamped itself, so nav2 need not be up —
+        # which matters because under SLAM it does not reliably come up.
+        lifecycle_nodes = (('/slam_toolbox',) if args.survey
+                           else ('/slam_toolbox', '/velocity_smoother'))
     else:
         effective_launch_args = args.launch_args
         lifecycle_nodes = ('/amcl', '/map_server', '/velocity_smoother')
@@ -527,14 +537,22 @@ def main():
             print('  lifecycle never reached active; retrying')
             continue
         print('  active after %.0f s' % elapsed)
-        print('== drive-chain readiness ==')
-        if not wait_drive_ready():
-            print('  drive chain never became ready; retrying')
-            continue
+        # A survey does its own readiness check against Gazebo ground truth
+        # and drives the controller directly; the /cmd_vel probe would be
+        # testing a nav2 path it deliberately does not use.
+        if not args.survey:
+            print('== drive-chain readiness ==')
+            if not wait_drive_ready():
+                print('  drive chain never became ready; retrying')
+                continue
 
         print('== environment ==')
         capture_environment(args.out_dir)
-        if args.autonomy:
+        if args.survey:
+            print('== SLAM survey (direct drive, no nav2) ==')
+            measure = [sys.executable, '-m', 'amr_metrics.slam_survey',
+                       '--out-dir', args.out_dir]
+        elif args.autonomy:
             print('== waypoint autonomy run ==')
             measure = [sys.executable, '-m', 'amr_metrics.run_waypoints',
                        '--out-dir', args.out_dir, '--loops', str(args.loops)]
