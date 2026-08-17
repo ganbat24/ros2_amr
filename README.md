@@ -294,14 +294,21 @@ identical runs, so any tuning claim resting on a single tour is inside the
 noise. This project has made that mistake and the campaign tooling exists
 because of it.
 
-Committed report `docs/validation/metrics_report_full_tour.png` covers a
-240 s (sim time) tour on a 12-core WSL2 host. Measured over the run:
-AMCL localization error median **0.063 m** (p95 0.138 m, max 0.182 m,
-**0.0%** of samples above 0.3 m) over 36.6 m travelled. Plots are in sim
-time (from `/clock`); the odometry trace is aligned to ground truth with
-the full rigid transform at run start. `environment.json` beside the
-report records the host, core count, middleware, Gazebo build,
-real-time factor and git SHA the run was produced on.
+Committed report `docs/validation/metrics_report_full_tour.png` is the
+median run of that campaign by total tour time (422 s of 361–507 s), not
+the best one. Measured over it: AMCL localization error median
+**0.063 m** (p95 0.140 m, max 0.202 m, **0.0%** of 2273 samples above
+0.3 m) over 37.7 m travelled. Plots are in sim time (from `/clock`); the
+odometry trace is aligned to ground truth with the full rigid transform
+at run start.
+
+`environment.json` beside the report records the host, core count,
+middleware, Gazebo build, real-time factor, git SHA, **whether the
+working tree was dirty, and the launch arguments**. The last two exist
+because the previous committed report did not have them: it was produced
+from a tree carrying an uncommitted `default_server_timeout` fix, so the
+SHA recorded next to it named a commit that did not contain the change
+which made the tour pass. This one reports `git_dirty: false`.
 
 The tour is gated on drive-chain readiness: the gz_ros2_control bridge
 needs a warm-up after launch, and `orchestrate` probes odometry until it
