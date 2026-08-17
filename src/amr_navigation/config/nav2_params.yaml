@@ -306,19 +306,13 @@ global_costmap:
         plugin: "nav2_costmap_2d::StaticLayer"
         map_topic: /map
         subscribe_to_updates: true
-      obstacle_layer:
-        plugin: "nav2_costmap_2d::ObstacleLayer"
-        observation_sources: scan
-        scan:
-          topic: /scan
-          max_obstacle_height: 2.0
-          clearing: true
-          marking: true
-          data_type: "LaserScan"
-          raytrace_max_range: 8.0
-          raytrace_min_range: 0.0
-          obstacle_max_range: 8.0
-          obstacle_min_range: 0.0
+      # No obstacle_layer block here on purpose. It is not in `plugins`
+      # above, so nav2 never loads it and never declares its parameters —
+      # verified live: the global costmap declares 44 parameters and not one
+      # of the 11 keys this block used to carry. Twelve lines that read as
+      # configuration and configure nothing. If the layer is ever wanted back
+      # here, add it to `plugins` first; the local costmap's copy is the
+      # working reference.
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
         cost_scaling_factor: 3.0
