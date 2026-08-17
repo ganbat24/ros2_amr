@@ -108,11 +108,45 @@ def drive_to(driver, poses, target, timeout, rate_hz=20.0):
     return False, math.hypot(tx - pose[2], ty - pose[3])
 
 
+def wait_for_odom_tf(node, timeout):
+    """Block until odom -> base_link exists. Returns True if it appeared.
+
+    slam_toolbox cannot map without this transform: with no odom frame its
+    message filter drops every scan with "the timestamp on the message is
+    earlier than all the data in the transform cache" — the cache being empty
+    because the frame does not exist. Measured 2026-08-14: the EKF hung at
+    "Waiting for clock to start..." while /clock published at 40 Hz, and this
+    survey then drove a flawless 21/21 route that produced 74 dropped scans
+    and no map at all.
+
+    Checking it here turns six wasted minutes into a fast failure that
+    orchestrate can retry, which is the whole value of a readiness gate.
+    """
+    import rclpy
+    from tf2_ros import Buffer, TransformListener
+
+    buffer = Buffer()
+    listener = TransformListener(buffer, node)
+    deadline = time.time() + timeout
+    try:
+        while time.time() < deadline:
+            rclpy.spin_once(node, timeout_sec=0.5)
+            if buffer.can_transform('odom', 'base_link',
+                                    rclpy.time.Time()):
+                return True
+        return False
+    finally:
+        del listener
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     ap.add_argument('--out-dir', default='/tmp/amr_slam_survey')
     ap.add_argument('--per-waypoint-timeout', type=float, default=90.0)
     ap.add_argument('--pose-wait', type=float, default=60.0)
+    ap.add_argument('--tf-wait', type=float, default=90.0,
+                    help='seconds to wait for odom->base_link before giving '
+                         'up; without it slam_toolbox drops every scan')
     args = ap.parse_args()
 
     import rclpy
@@ -139,6 +173,19 @@ def main():
             return 1
         print('  start pose: (%.2f, %.2f)' % (poses.pose[2], poses.pose[3]),
               flush=True)
+
+    print('== waiting for odom -> base_link (slam_toolbox needs it) ==',
+          flush=True)
+    if not wait_for_odom_tf(node, args.tf_wait):
+        print('NO odom -> base_link TRANSFORM after %.0f s — aborting before '
+              'driving.' % args.tf_wait, flush=True)
+        print('  The EKF is not publishing it. Check the launch log for '
+              '"[ekf_filter_node]: Waiting for clock to start..." — that is '
+              'the EKF failing to discover /clock, and slam_toolbox will drop '
+              'every scan while it persists.', flush=True)
+        rclpy.shutdown()
+        return 1
+    print('  odom -> base_link present', flush=True)
 
     os.makedirs(args.out_dir, exist_ok=True)
     driver = Driver(node)
