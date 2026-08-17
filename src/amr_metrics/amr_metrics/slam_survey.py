@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 """Drive the mapping route directly, without nav2, and build a SLAM map.
 
-Mapping does not need a navigation stack, and in this workspace depending on
-one does not work: under `use_slam:=true` nav2's lifecycle manager does not
-finish bringing its nodes up — measured 2026-08-14, `/velocity_smoother` sat
-at `unconfigured` for the full 240 s timeout while `/slam_toolbox` was active.
-An earlier attempt to map with the goal tour scored 1/4 for a related reason:
-it dispatches to coordinates 8 m away in a world slam_toolbox has not seen, so
-the planner has nothing to plan through.
+Mapping does not need a navigation stack, and driving through one adds a
+dependency that has repeatedly not been up in time. Under `use_slam:=true`
+nav2's lifecycle manager was seen with `/velocity_smoother` stuck at
+`unconfigured` for a 240 s timeout; the cause was upstream of nav2 — the EKF
+had not yet acquired /clock, so `odom -> base_link` did not exist and the
+costmaps could not activate. Mapping through the goal tour fails for an
+unrelated reason as well: it dispatches to coordinates 8 m away in a world
+slam_toolbox has not seen, so the planner has nothing to plan through, and it
+scored 1/4.
 
 So this drives the wheels itself. It publishes TwistStamped straight to
 /cmd_vel_stamped, which is what diff_drive_controller subscribes to, bypassing

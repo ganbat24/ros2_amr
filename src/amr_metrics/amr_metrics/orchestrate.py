@@ -476,9 +476,15 @@ def main():
     ap.add_argument('--attempts', type=int, default=3,
                     help='relaunch attempts if the stack never becomes ready')
     ap.add_argument('--launch-timeout', type=float, default=240.0)
-    # The EKF was measured taking ~46 s to acquire /clock even on a healthy
-    # AMCL run, so this needs real headroom before it means "never".
-    ap.add_argument('--tf-timeout', type=float, default=180.0)
+    # The EKF's /clock acquisition is slow and gets slower as a session goes
+    # on: measured 46 s early on 2026-08-14 and 197 s six hours later, on the
+    # same box and the same commit. The AMCL path hid this because its gate is
+    # cumulative (lifecycle wait, then up to 150 s of drive probes, then TF),
+    # while the SLAM survey's shorter gate did not cover it — which is what
+    # looked for several runs like "SLAM mode is broken".
+    #
+    # 300 s so this means "never", not "later than I waited".
+    ap.add_argument('--tf-timeout', type=float, default=300.0)
     ap.add_argument('--keep-alive', action='store_true',
                     help='leave the stack running after --tour (default: '
                          'always tear down, so a run cannot pin the machine)')
