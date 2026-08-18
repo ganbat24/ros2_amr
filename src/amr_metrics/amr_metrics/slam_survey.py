@@ -60,30 +60,66 @@ class Driver:
         self.node = node
         self.msg_type = TwistStamped
         self.pub = node.create_publisher(TwistStamped, '/cmd_vel_stamped', 10)
+        self._last_stamp_ns = None
+        self._frozen = 0
 
     def send(self, linear, angular):
         msg = self.msg_type()
         # Sim time: the node is created with use_sim_time, so its clock is
         # /clock. A wall-clock stamp here would look stale to the controller
         # and be discarded by its cmd_vel_timeout.
-        msg.header.stamp = self.node.get_clock().now().to_msg()
+        stamp = self.node.get_clock().now().to_msg()
+        # A frozen clock is the failure this guard exists for. It presents as
+        # a robot that will not move while /cmd_vel_stamped publishes happily
+        # at 20 Hz — the controller is silently discarding every message as
+        # older than its own time. Naming it beats rediscovering it.
+        as_ns = stamp.sec * 1_000_000_000 + stamp.nanosec
+        if as_ns == self._last_stamp_ns:
+            self._frozen += 1
+            if self._frozen == 40:
+                self.node.get_logger().error(
+                    'command stamps are not advancing (%d.%09d). The node is '
+                    'not being spun, so its /clock-driven time source is '
+                    'frozen and diff_drive_controller will discard every '
+                    'command as stale.' % (stamp.sec, stamp.nanosec))
+        else:
+            self._frozen = 0
+            self._last_stamp_ns = as_ns
+        msg.header.stamp = stamp
         msg.header.frame_id = 'base_link'
         msg.twist.linear.x = float(linear)
         msg.twist.angular.z = float(angular)
         self.pub.publish(msg)
 
     def stop(self, times=5):
+        import rclpy
         for _ in range(times):
             self.send(0.0, 0.0)
-            time.sleep(0.05)
+            rclpy.spin_once(self.node, timeout_sec=0.05)
 
 
 def drive_to(driver, poses, target, timeout, rate_hz=20.0):
-    """Steer to (x, y). Returns (reached, distance_left)."""
+    """Steer to (x, y). Returns (reached, distance_left).
+
+    Spins the node each cycle rather than sleeping. With use_sim_time the
+    node's clock is driven by its /clock subscription, and a node that is
+    never spun has a frozen clock — every TwistStamped then carries the same
+    stale stamp and diff_drive_controller discards it:
+
+      Ignoring the received message (timestamp 132.49) because it is older
+      than the current time by 25.84 seconds, which exceeds the allowed
+      timeout (0.5000)
+
+    The robot sits still while /cmd_vel_stamped publishes at 20 Hz and /odom
+    reports 36 Hz, which looks like a drive-chain fault and is not one.
+    Spinning also services the map subscription during the drive.
+    """
+    import rclpy
     tx, ty = target
     deadline = time.time() + timeout
     period = 1.0 / rate_hz
     while time.time() < deadline:
+        rclpy.spin_once(driver.node, timeout_sec=0.0)
         with poses.lock:
             pose = poses.pose
         if pose is None:
@@ -101,7 +137,7 @@ def drive_to(driver, poses, target, timeout, rate_hz=20.0):
         else:
             driver.send(clamp(0.9 * dist, MAX_LIN),
                         clamp(1.2 * heading_error, MAX_ANG))
-        time.sleep(period)
+        rclpy.spin_once(driver.node, timeout_sec=period)
     driver.stop()
     with poses.lock:
         pose = poses.pose
