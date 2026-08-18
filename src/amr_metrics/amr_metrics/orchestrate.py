@@ -389,6 +389,15 @@ def save_and_score_map(out_dir):
     it sits inside the tour block rather than after teardown.
     """
     stem = os.path.join(out_dir, 'slam_map')
+    if os.path.exists(stem + '.yaml'):
+        # A survey saves the map from its own long-lived subscription, which
+        # is more reliable than a short-lived CLI having to discover a
+        # transient-local topic — that failed twice on 2026-08-14 after runs
+        # where slam_toolbox was demonstrably mapping.
+        print('== scoring map saved by the run ==', flush=True)
+        subprocess.run([sys.executable, '-m', 'amr_metrics.map_quality',
+                        '--map', stem + '.yaml', '--out-dir', out_dir])
+        return True
     print('== saving SLAM map ==', flush=True)
     # Documented CLI arguments only. save_map_timeout belongs to the map_saver
     # *server*, not this CLI — the string does not appear in map_saver_cli or

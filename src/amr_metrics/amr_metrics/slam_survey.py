@@ -110,6 +110,71 @@ def drive_to(driver, poses, target, timeout, rate_hz=20.0):
     return False, math.hypot(tx - pose[2], ty - pose[3])
 
 
+class MapCatcher:
+    """Hold the latest /map, so saving it does not need a separate process.
+
+    map_saver_cli is a short-lived process that has to discover a
+    transient-local topic within its own timeout. On this host that failed
+    twice in a row — once after a survey that drove 21/21 waypoints with
+    slam_toolbox registering scans normally — and a mapping run that cannot
+    save its map has produced nothing.
+
+    Subscribing from the surveying node instead means the subscription is
+    established before the drive starts and stays up throughout, which is the
+    same reason this tool drives the controller directly rather than through
+    nav2.
+    """
+
+    def __init__(self, node):
+        from nav_msgs.msg import OccupancyGrid
+        from rclpy.qos import (DurabilityPolicy, HistoryPolicy, QoSProfile,
+                               ReliabilityPolicy)
+        self.grid = None
+        # slam_toolbox latches /map: transient-local and reliable, depth 1.
+        # A default sensor-data profile would never match it.
+        qos = QoSProfile(depth=1,
+                         reliability=ReliabilityPolicy.RELIABLE,
+                         durability=DurabilityPolicy.TRANSIENT_LOCAL,
+                         history=HistoryPolicy.KEEP_LAST)
+        self.sub = node.create_subscription(
+            OccupancyGrid, '/map', self._on_map, qos)
+
+    def _on_map(self, msg):
+        self.grid = msg
+
+    def save(self, stem):
+        """Write map_server-format PGM + YAML. Returns True if written."""
+        if self.grid is None:
+            return False
+        info = self.grid.info
+        width, height = info.width, info.height
+        # ROS occupancy: -1 unknown, 0..100 probability. map_server images
+        # use 0 occupied, 254 free, 205 unknown, and store rows top-down
+        # while the grid is row-major from the bottom-left — so rows are
+        # emitted in reverse. Getting that backwards mirrors the map.
+        rows = []
+        for row in range(height - 1, -1, -1):
+            start = row * width
+            rows.append(bytes(
+                0 if v >= 65 else (254 if 0 <= v <= 19 else 205)
+                for v in self.grid.data[start:start + width]))
+        with open(stem + '.pgm', 'wb') as handle:
+            handle.write(b'P5\n%d %d\n255\n' % (width, height))
+            handle.write(b''.join(rows))
+        with open(stem + '.yaml', 'w') as handle:
+            handle.write(
+                'image: %s.pgm\n'
+                'mode: trinary\n'
+                'resolution: %f\n'
+                'origin: [%f, %f, 0.0]\n'
+                'negate: 0\n'
+                'occupied_thresh: 0.65\n'
+                'free_thresh: 0.196\n'
+                % (os.path.basename(stem), info.resolution,
+                   info.origin.position.x, info.origin.position.y))
+        return True
+
+
 def wait_for_odom_tf(node, timeout):
     """Block until odom -> base_link exists. Returns True if it appeared.
 
@@ -193,6 +258,9 @@ def main():
     print('  odom -> base_link present', flush=True)
 
     os.makedirs(args.out_dir, exist_ok=True)
+    # Subscribe before driving, so the latch is captured no matter when
+    # slam_toolbox first publishes.
+    catcher = MapCatcher(node)
     driver = Driver(node)
 
     print('== driving %d mapping waypoints ==' % len(MAPPING_ROUTE), flush=True)
@@ -207,9 +275,29 @@ def main():
         # Pause so slam_toolbox gets a stationary scan at each vertex; scans
         # taken mid-turn are the ones it fails to register.
         driver.stop()
-        time.sleep(1.0)
+        # Spin here rather than sleeping: the map subscription only delivers
+        # while the node is spun, and this is the only idle moment in the run.
+        deadline = time.time() + 1.0
+        while time.time() < deadline:
+            rclpy.spin_once(node, timeout_sec=0.1)
 
     driver.stop(times=10)
+    # Give slam_toolbox a moment to publish its final map, spinning so the
+    # subscription actually receives it.
+    deadline = time.time() + 15.0
+    while time.time() < deadline and catcher.grid is None:
+        rclpy.spin_once(node, timeout_sec=0.2)
+    for _ in range(20):
+        rclpy.spin_once(node, timeout_sec=0.1)
+
+    stem = os.path.join(args.out_dir, 'slam_map')
+    if catcher.save(stem):
+        print('  saved map -> %s.pgm/.yaml (%d x %d @ %.3f m)'
+              % (stem, catcher.grid.info.width, catcher.grid.info.height,
+                 catcher.grid.info.resolution), flush=True)
+    else:
+        print('  NO /map RECEIVED — slam_toolbox published nothing to save',
+              flush=True)
     elapsed = time.time() - started
     print('== survey done: %d/%d waypoints in %.0f s =='
           % (reached, len(MAPPING_ROUTE), elapsed), flush=True)
