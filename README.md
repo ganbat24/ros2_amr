@@ -242,10 +242,27 @@ on Jazzy + Gazebo Harmonic. `colcon test` over the eight `amr_*`
 packages reports **114 test cases across 40 CTest targets, 0 errors and
 0 failures** (measured 2026-08-14; the two counts differ because each
 ament lint target expands into one case per file, and the workspace's
-vendored `gz_ros2_control` overlay is excluded). SLAM Toolbox mapping is selectable via
-`use_slam:=true` (verified: map grows as the robot drives — the 2.8.x
-async node is a lifecycle node and is driven by its own lifecycle
-manager); AMCL with the pre-built map remains the default. Real-hardware
+vendored `gz_ros2_control` overlay is excluded). SLAM Toolbox mapping is selectable via `use_slam:=true`; AMCL with the
+pre-built map remains the default.
+
+**Mapping is driven by `slam_survey`, not by the goal tour.** The tour
+dispatches to fixed coordinates up to 8 m away, and slam_toolbox starts
+with an empty map, so there is nothing to plan through — measured, it
+scores 1/4 with three goals aborting within 3–6 s. `slam_survey` instead
+drives a 21-waypoint coverage route by publishing `TwistStamped` directly
+to `/cmd_vel_stamped`, bypassing nav2 entirely, and captures `/map` from
+its own subscription:
+
+```bash
+ros2 run amr_metrics orchestrate --tour --survey --out-dir /tmp/slam_run
+```
+
+`map_quality` then scores the result against the world's own wall
+geometry — the world is generated from rectangles, so ground truth is
+exact and distances are computed analytically rather than against another
+map. It reports wall coverage, occupied-cell precision, the error
+distribution and explored fraction, and is calibrated in both directions:
+100% / 100% / 0.000 m on the pre-built map, 0% coverage on an empty one. Real-hardware
 bringup (`amr_control/controller_manager.launch.py`) is wired but
 untested — it needs a hardware interface plugin in the URDF.
 
