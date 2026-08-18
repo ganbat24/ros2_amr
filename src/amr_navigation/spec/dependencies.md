@@ -31,3 +31,4 @@
 - `nav2_dwb_controller`
 - `nav2_smoother`
 - `nav2_velocity_smoother`
+- `nav2_waypoint_follower`
