@@ -260,9 +260,24 @@ ros2 run amr_metrics orchestrate --tour --survey --out-dir /tmp/slam_run
 `map_quality` then scores the result against the world's own wall
 geometry — the world is generated from rectangles, so ground truth is
 exact and distances are computed analytically rather than against another
-map. It reports wall coverage, occupied-cell precision, the error
-distribution and explored fraction, and is calibrated in both directions:
-100% / 100% / 0.000 m on the pre-built map, 0% coverage on an empty one. Real-hardware
+map. It is calibrated in both directions: 100% / 100% / 0.000 m on the
+pre-built map, 0% coverage on an empty one.
+
+Measured on a 21-waypoint survey (259 s, 21/21 waypoints,
+`docs/validation/slam_map_quality.png`):
+
+| metric | value |
+|---|---|
+| wall coverage | **93.1%** |
+| occupied-cell precision | **100.0%** |
+| occupied error median | **0.009 m** (p95 0.091 m, max 0.115 m) |
+| explored fraction | **99.0%** |
+
+1960 occupied cells against 2338 in the true geometry, none of them
+spurious. The map is saved in **world coordinates**: slam_toolbox origins
+its map at the robot's start pose, so the survey shifts the origin by the
+measured start position. Without that shift the same map scores 19.8%
+coverage at 0.618 m median error — the offset, not the map. Real-hardware
 bringup (`amr_control/controller_manager.launch.py`) is wired but
 untested — it needs a hardware interface plugin in the URDF.
 

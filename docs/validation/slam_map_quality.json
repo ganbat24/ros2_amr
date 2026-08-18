@@ -1,0 +1,14 @@
+{
+  "map": "/tmp/slam_map_run/slam_map.yaml",
+  "resolution_m": 0.05,
+  "tolerance_m": 0.15,
+  "wall_coverage": 0.93071000855432,
+  "occupied_precision": 1.0,
+  "occupied_error_median_m": 0.008675999999999462,
+  "occupied_error_p95_m": 0.09132399999999999,
+  "occupied_error_max_m": 0.11466900000000013,
+  "explored_fraction": 0.9900494098270656,
+  "cells_occupied": 1960,
+  "cells_truth_solid": 2338,
+  "cells_truth_free": 29144
+}

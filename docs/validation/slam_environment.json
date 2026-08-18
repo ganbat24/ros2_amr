@@ -1,0 +1,20 @@
+{
+  "timestamp": "2026-08-14T19:39:07+0100",
+  "host": "wsl2",
+  "cores": 12,
+  "kernel": "6.18.33.2-microsoft-standard-WSL2",
+  "is_wsl": true,
+  "in_container": false,
+  "ros_distro": "jazzy",
+  "rmw": "<default>",
+  "ros_domain_id": "92",
+  "gz_version": "8.11.0",
+  "gz_binary": "/opt/ros/jazzy/opt/gz_tools_vendor/bin/gz",
+  "libgl_always_software": "",
+  "git_sha": "3a8756447afcbd7f7d4dcb098355571f4456b4f5",
+  "git_dirty": false,
+  "git_dirty_paths": [],
+  "launch_args": "use_slam:=true",
+  "real_time_factor": "1.0",
+  "restampers_running": []
+}
