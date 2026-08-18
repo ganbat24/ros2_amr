@@ -178,8 +178,21 @@ class MapCatcher:
     def _on_map(self, msg):
         self.grid = msg
 
-    def save(self, stem):
-        """Write map_server-format PGM + YAML. Returns True if written."""
+    def save(self, stem, offset=(0.0, 0.0)):
+        """Write map_server-format PGM + YAML. Returns True if written.
+
+        `offset` shifts the recorded origin into the world frame. It matters
+        more than it looks: slam_toolbox origins its map at the robot's start
+        pose, so the saved origin is relative to wherever the robot happened
+        to begin. Scoring those coordinates against the simulated floorplan
+        without the shift measures the offset rather than the map — measured
+        2026-08-14, the same map scored 19.8% wall coverage and 0.618 m median
+        error raw, against 92.5% and 0.005 m once shifted by the start pose.
+
+        Writing it in world coordinates also makes the artifact directly
+        comparable to the pre-built maps/amr_office.yaml, which is the point
+        of producing it.
+        """
         if self.grid is None:
             return False
         info = self.grid.info
@@ -207,7 +220,8 @@ class MapCatcher:
                 'occupied_thresh: 0.65\n'
                 'free_thresh: 0.196\n'
                 % (os.path.basename(stem), info.resolution,
-                   info.origin.position.x, info.origin.position.y))
+                   info.origin.position.x + offset[0],
+                   info.origin.position.y + offset[1]))
         return True
 
 
@@ -277,8 +291,8 @@ def main():
             print('NO GROUND TRUTH POSE — is Gazebo up? aborting.', flush=True)
             rclpy.shutdown()
             return 1
-        print('  start pose: (%.2f, %.2f)' % (poses.pose[2], poses.pose[3]),
-              flush=True)
+        start_xy = (poses.pose[2], poses.pose[3])
+        print('  start pose: (%.2f, %.2f)' % start_xy, flush=True)
 
     print('== waiting for odom -> base_link (slam_toolbox needs it) ==',
           flush=True)
@@ -327,7 +341,7 @@ def main():
         rclpy.spin_once(node, timeout_sec=0.1)
 
     stem = os.path.join(args.out_dir, 'slam_map')
-    if catcher.save(stem):
+    if catcher.save(stem, offset=start_xy):
         print('  saved map -> %s.pgm/.yaml (%d x %d @ %.3f m)'
               % (stem, catcher.grid.info.width, catcher.grid.info.height,
                  catcher.grid.info.resolution), flush=True)
