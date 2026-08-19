@@ -294,6 +294,12 @@ global_costmap:
       transform_tolerance: 1.0
       update_frequency: 1.0
       publish_frequency: 1.0
+      # Full /global_costmap/costmap grid: publish every tick, not just on
+      # geometry change. With rolling_window=false the origin never moves, so
+      # the full grid would otherwise publish once at startup and then only
+      # delta updates flow — Foxglove/RViz clients that connect later never
+      # see it. Set true so the global layer is always visible.
+      always_send_full_costmap: true
       rolling_window: false
       # Fixed window sized to cover the whole amr_office map from the
       # robot's spawn pose: with rolling_window=false the costmap origin
@@ -353,6 +359,9 @@ local_costmap:
       transform_tolerance: 1.0
       update_frequency: 5.0
       publish_frequency: 2.0
+      # Full /local_costmap/costmap grid: publish every tick (see global
+      # costmap note; keeps both layers visible to late-joining clients).
+      always_send_full_costmap: true
       rolling_window: true
       width: 4
       height: 4
