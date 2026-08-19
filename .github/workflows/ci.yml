@@ -5,6 +5,11 @@ on: [push, pull_request]
 jobs:
   ci:
     runs-on: ubuntu-24.04
+    # Professional safety net, not a target: individual steps are the ones
+    # designed to be fast (see the nav smoke test's own comment below for
+    # measured timing). This just stops a genuinely stuck job from burning
+    # Actions minutes for hours.
+    timeout-minutes: 20
     container:
       image: ros:jazzy-ros-base-noble
       env:
@@ -137,3 +142,48 @@ jobs:
           path: |
             build/**/test_results/**
             log/**/**
+
+      # Everything above this line checks config SHAPE (params load, plugins
+      # register, lifecycle order) -- none of it launches Gazebo or asserts
+      # a goal is reached. That gap is real: a broken nav2_params.yaml could
+      # merge here and stay green. This step is the first one that actually
+      # drives the robot.
+      #
+      # Deliberately ONE goal, not the four-goal tour amr_metrics can run
+      # locally (`orchestrate --campaign N`) -- this is a smoke test (did the
+      # stack come up and navigate at all), not a performance benchmark, and
+      # GH Actions runners don't have the cores to make timing numbers from
+      # here mean anything anyway (see docker/docker-compose.yml's own note
+      # on this). g2_top_left is picked because it's the fastest goal
+      # measured across every arm in this project's method-comparison
+      # campaign (2026-08-19) -- reaches real map area (crosses no doors,
+      # unlike g1/g3, so it stays a meaningful nav test, just a short one).
+      #
+      # Measured 2026-08-19 on a 2-core container matching this runner's
+      # class (not this exact runner -- can't benchmark GH Actions directly
+      # without a real run): teardown ~9s, launch+drive-chain-ready ~22s,
+      # g2_top_left itself ~43s. Budget the step timeout well above that to
+      # absorb real GH Actions variance, not to encourage it to run long.
+      - name: Navigation smoke test
+        timeout-minutes: 8
+        run: |
+          . /opt/ros/jazzy/setup.sh
+          . ./install/setup.sh
+          ros2 run amr_metrics orchestrate --teardown || true
+          ros2 run amr_metrics orchestrate --launch --wait-ready --headless true --launch-timeout 240
+          ros2 run amr_metrics run_validation --goals g2_top_left --out-dir /tmp/ci_nav_smoke --per-goal-timeout 180 --no-plot
+
+      - name: Teardown navigation stack
+        if: always()
+        run: |
+          . /opt/ros/jazzy/setup.sh
+          . ./install/setup.sh 2>/dev/null || true
+          ros2 run amr_metrics orchestrate --teardown || true
+
+      - name: Upload navigation smoke test artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: nav-smoke-test-results
+          path: /tmp/ci_nav_smoke/**
+          if-no-files-found: ignore
