@@ -1,0 +1,411 @@
+# Formerly nav2_params.yaml / the launch default. Superseded 2026-08-19:
+# RPP (untuned defaults) + SmacPlanner2D is now the default (see
+# nav2_params.yaml) -- fastest on every leg measured, comparable-or-better
+# reliability, and about a quarter the tuning surface area DWB needed to
+# reach parity. Full reasoning: docs/validation/method_comparison.md and
+# docs/validation/dwb_tuning_retrospective.md.
+#
+# Kept as a reference arm, not deleted: this is still the best-measured DWB
+# configuration for this map (40/40 goals over 10 tours, 2026-08-14), and
+# every historical tuning note below remains the record of *why* each value
+# differs from nav2's own default -- see nav2_params_dwb_untuned.yaml for
+# what happens without them, measured 2026-08-19.
+#
+# To run this as the active stack:
+#   ros2 launch amr_bringup system.launch.py \
+#     params_file:=$(ros2 pkg prefix --share amr_navigation)/config/nav2_params_dwb.yaml
+
+bt_navigator:
+  ros__parameters:
+    use_sim_time: true
+    global_frame: map
+    robot_base_frame: base_link
+    odom_topic: /odom
+    # default_bt_xml_filename is a ROS1/older-nav2 name; this nav2
+    # release's plugin-based navigators each have their own param
+    # (default_nav_to_pose_bt_xml / default_nav_through_poses_bt_xml,
+    # confirmed against the installed libnav2_navigate_to_pose_
+    # navigator.so). This default is overridden at launch time by
+    # amr_navigation/launch/navigation.launch.py's RewrittenYaml rewrite;
+    # kept here too so loading this file directly still resolves to a
+    # real file instead of nav2_bringup's now-nonexistent
+    # behavior_trees/navigate_w_replanning_and_recovery.xml.
+    default_nav_to_pose_bt_xml: "navigate_to_pose_w_replanning_and_recovery.xml"
+    # nav2's default is 20 ms — how long a BT action node waits for its
+    # server (controller/planner/behaviour) to ACKNOWLEDGE a goal. That is a
+    # tight window on a host running the sim below real time under software
+    # rendering, and when it expires the BT aborts the whole navigation goal
+    # with "Timed out while waiting for action server to acknowledge".
+    #
+    # Measured 2026-08-14: a g3 that failed at (7.07, 4.78) logged exactly one
+    # warning for the whole goal — that timeout — with zero "No valid
+    # trajectories" and zero "Failed to make progress". The robot was
+    # navigating fine; the acknowledgement just did not arrive in 20 ms.
+    #
+    # This only changes how patient the BT is with a busy server. It does not
+    # affect planning or control behaviour.
+    default_server_timeout: 200
+    # nav2 1.3.x auto-loads the built-in BT plugin libraries and defaults
+    # plugin_lib_names accordingly; listing them explicitly caused
+    # "ID [...] already registered" and crashed bt_navigator. Omit it.
+
+controller_server:
+  ros__parameters:
+    use_sim_time: true
+    controller_frequency: 20.0
+    min_x_velocity_threshold: 0.001
+    min_y_velocity_threshold: 0.001
+    min_theta_velocity_threshold: 0.001
+    failure_tolerance: 0.3
+    progress_checker_plugins: ["progress_checker"]
+    goal_checker_plugins: ["goal_checker"]
+    controller_plugins: ["FollowPath"]
+    progress_checker:
+      plugin: "nav2_controller::SimpleProgressChecker"
+      required_movement_radius: 0.5
+      # Back to 10.0. It was raised to 20.0 while the robot was oscillating
+      # near the W2 door corner and recoveries were "completing successfully"
+      # without resolving a stall — but that behaviour was the DWB Align
+      # critics making a stationary trajectory optimal, and the comment here
+      # already admitted 20.0 never converted a failing goal on its own.
+      #
+      # Once the real cause was fixed, the justification for the deviation
+      # went with it. Measured 2026-08-14, three tours with this at 10.0 and
+      # cost_travel_multiplier at 1.0: 12/12 goals, per-goal medians inside
+      # the ten-tour baseline's ranges.
+      movement_time_allowance: 10.0
+    goal_checker:
+      plugin: "nav2_controller::SimpleGoalChecker"
+      xy_goal_tolerance: 0.25
+      yaw_goal_tolerance: 0.25
+      stateful: True
+    FollowPath:
+      plugin: "dwb_core::DWBLocalPlanner"
+      # Slight reverse allowed: with min_vel_x 0.0 the robot cannot back
+      # out of an obstacle's inflation zone once wedged ("no legal
+      # trajectories" forever; recoveries also fail).
+      min_vel_x: -0.2
+      min_vel_y: 0.0
+      max_vel_x: 0.5
+      max_vel_y: 0.0
+      max_vel_theta: 1.9
+      min_speed_xy: 0.0
+      max_speed_xy: 0.5
+      min_speed_theta: 0.0
+      # 2.5 is nav2's reference; 1.0 throttled how fast DWB could ramp
+      # up within a control cycle.
+      acc_lim_x: 2.5
+      acc_lim_y: 0.0
+      acc_lim_theta: 3.2
+      decel_lim_x: -2.5
+      decel_lim_y: 0.0
+      decel_lim_theta: -3.2
+      vx_samples: 20
+      vy_samples: 5
+      vtheta_samples: 20
+      # 1.7 is nav2's reference. 2.2 projected 1.1 m ahead at full speed,
+      # which in this world's doorways put most fast trajectories into
+      # inflation.
+      sim_time: 1.7
+      linear_granularity: 0.05
+      angular_granularity: 0.025
+      xy_goal_tolerance: 0.25
+      trans_stopped_velocity: 0.25
+      short_circuit_trajectory_evaluation: True
+      # `path_length_tolerance: 1.0` and `stateful: True` used to sit here and
+      # were both dead (audited 2026-08-14 against a live controller_server:
+      # 53 keys in YAML, 2 undeclared). path_length_tolerance is declared by
+      # no installed nav2 library at all. `stateful` is real but belongs to
+      # SimpleGoalChecker, where it is already set correctly above — reading
+      # it here suggested DWB had a stateful mode that it does not.
+      critics: ["RotateToGoal", "Oscillation", "BaseObstacle", "GoalAlign", "PathAlign", "PathDist", "GoalDist"]
+      # 0.05 made the obstacle critic nearly inert: the robot hugged
+      # O1/wall inflation because path critics dominated. 0.2 keeps
+      # obstacle cost meaningful without starving path following.
+      # (Tried 0.4 on WSL2 chasing a door-corner wedging failure; a single
+      # tour showed no measurable improvement over 0.2, so reverted rather
+      # than keep an unproven deviation from this carefully-tuned baseline.)
+      BaseObstacle.scale: 0.2
+      # The Align critics are DISABLED, matching nav2's own shipped DWB
+      # reference (nav2_bringup/params/nav2_multirobot_params_1.yaml sets
+      # both to 0.0). They were 32.0 and 6.0 here, and that was the reason
+      # the robot crawled everywhere.
+      #
+      # Why they break it: PathAlign scores how far a trajectory's forward
+      # projection lands from the path. A trajectory that does not move has
+      # zero deviation, so it scores 0 — a perfect score no moving
+      # trajectory can beat. Measured from DWB's own /evaluation topic, the
+      # stationary choice scored 16.40 while the best moving candidate
+      # scored 25.10, of which PathAlign contributed +17.60. Standing still
+      # was a local optimum, and the controller sat in it: mean commanded
+      # velocity 0.015 m/s against a max_vel_x of 0.5.
+      #
+      # Corner-cutting — what these critics were raised to fix — is the
+      # obstacle critic's job (BaseObstacle above) and the planner's, not
+      # the alignment critics'.
+      PathAlign.scale: 0.0
+      GoalAlign.scale: 0.0
+      # Irrelevant while the scales are 0; kept at nav2's default so the
+      # critics behave normally if anyone re-enables them.
+      PathAlign.forward_point_distance: 0.1
+      GoalAlign.forward_point_distance: 0.1
+      # The Dist critics are what reward progress toward the path and goal.
+      # nav2's reference is 32.0 / 24.0; GoalDist was 6.0 here, which left
+      # almost nothing pulling the robot forward once Align was removed.
+      PathDist.scale: 32.0
+      GoalDist.scale: 24.0
+      RotateToGoal.scale: 32.0
+      RotateToGoal.slowing_factor: 5.0
+      RotateToGoal.lookahead_time: -1.0
+
+planner_server:
+  ros__parameters:
+    use_sim_time: true
+    planner_plugins: ["GridBased"]
+    GridBased:
+      # planner_server logs one ERROR at configure: "Inflation layer either
+      # not found or inflation is not set sufficiently for optimized
+      # non-circular collision checking capabilities". It is benign here, and
+      # this is the measurement rather than the assumption (2026-08-14):
+      #
+      #   inflation_radius | 0.55 | 0.70 | 1.00 | 1.50
+      #   warnings emitted |   1  |   1  |   1  |   1
+      #
+      # Invariant to the value across a 3x sweep, so it is not reporting an
+      # inflation misconfiguration. It fires inside SmacPlanner2D::configure,
+      # ~20 ms after the inflation layer initialises and before the costmap is
+      # activated — the layer has not built its cost cache yet at that point.
+      # The optimisation it refers to is the potential-field shortcut that lets
+      # an SE2 planner skip full-footprint checks; SmacPlanner2D plans for a
+      # circular robot (robot_radius 0.25, footprint empty), so it never uses
+      # that path. Do not raise inflation_radius to silence it — that changes
+      # real navigation behaviour to quiet a message about a code path this
+      # planner does not take.
+      plugin: "nav2_smac_planner::SmacPlanner2D"
+      tolerance: 0.125
+      downsample_costmap: false
+      downsampling_factor: 1
+      allow_unknown: true
+      max_iterations: -1
+      max_on_approach_iterations: 1000
+      max_planning_time: 2.0
+      # Back to nav2's default of 1.0 (confirmed live: a planner_server given
+      # no value for this reports 1.0). It had been walked up to 6.0 across
+      # sessions to stop the planner flip-flopping between two near-equal
+      # routes at the D1/W2 door corners, and the comment here already said
+      # the evidence was WEAK — a single-tour signal — and asked for a
+      # multi-run campaign before treating 6.0 as established.
+      #
+      # That campaign was run on 2026-08-14 and did not support it. Three
+      # tours at 1.0 (with movement_time_allowance back at 10.0): 12/12
+      # goals, g3 median 159 s against the ten-tour baseline's 172 s, every
+      # goal's median inside the baseline's min-max. The flip-flopping it was
+      # raised against was a symptom of the crawling controller, and it went
+      # away with the DWB Align critics.
+      #
+      # Evidence strength, stated plainly: this shows no regression at N=3,
+      # not equivalence. What justifies the revert is not that 1.0 is proven
+      # better — it is that the reason for deviating from upstream was
+      # measured against a controller that has since been fixed, so the
+      # deviation no longer has a justification to inherit.
+      cost_travel_multiplier: 1.0
+
+smoother_server:
+  ros__parameters:
+    use_sim_time: true
+    smoother_plugins: ["simple_smoother"]
+    simple_smoother:
+      plugin: "nav2_smoother::SimpleSmoother"
+      tolerance: 1.0e-10
+      max_its: 1000
+      do_refinement: True
+
+behavior_server:
+  ros__parameters:
+    use_sim_time: true
+    # `costmap_topic` and `footprint_topic` used to be set here. Neither is
+    # declared by behavior_server in this release — it declares
+    # local_costmap_topic / local_footprint_topic (and the global pair).
+    #
+    # Worth keeping the reason they are deleted rather than renamed. The value
+    # this file asked for was `local_costmap/costmap`; the real default is
+    # `local_costmap/costmap_raw`, which is the nav2_msgs/Costmap topic the
+    # behaviors actually consume. Renaming the key to the declared name while
+    # keeping that value would have pointed the recovery behaviours at a topic
+    # that does not carry what they need — so the wrong name was the only
+    # thing preventing a real breakage, and "fixing" it carelessly is worse
+    # than leaving it. Defaults are correct here; say nothing.
+    cycle_frequency: 10.0
+    behavior_plugins: ["spin", "backup", "drive_on_heading", "wait"]
+    spin:
+      plugin: "nav2_behaviors::Spin"
+    backup:
+      plugin: "nav2_behaviors::BackUp"
+    drive_on_heading:
+      plugin: "nav2_behaviors::DriveOnHeading"
+    wait:
+      plugin: "nav2_behaviors::Wait"
+    local_frame: odom
+    global_frame: map
+    robot_base_frame: base_link
+    transform_tolerance: 0.1
+    simulate_ahead_time: 2.0
+    max_rotational_vel: 1.0
+    min_rotational_vel: 0.4
+    rotational_acc_lim: 3.2
+
+velocity_smoother:
+  ros__parameters:
+    use_sim_time: true
+    smoothing_frequency: 20.0
+    scale_velocities: false
+    feedback: "OPEN_LOOP"
+    max_velocity: [0.5, 0.0, 1.9]
+    min_velocity: [-0.5, 0.0, -1.9]
+    max_accel: [1.0, 0.0, 3.2]
+    max_decel: [-1.0, 0.0, -3.2]
+    odom_topic: /odom
+    odom_duration: 0.1
+    deadband_velocity: [0.0, 0.0, 0.0]
+    velocity_timeout: 1.0
+
+# Drives a route through /follow_waypoints instead of one goal at a time.
+# The four-goal tour dispatches each goal separately and settles 15 s between
+# them, which exercises "can it reach a pose" but never "can it keep running";
+# every leg starts from a stationary robot with a freshly settled stack. A
+# waypoint route runs continuously, and number_of_loops lets one action call
+# cover a long autonomy run.
+#
+# Parameter names verified against libwaypoint_follower_core.so and
+# libwait_at_waypoint.so: the plugin key is waypoint_task_executor_plugin,
+# NOT waypoint_task_executor, and an unrecognised key here would be ignored
+# in silence rather than rejected.
+waypoint_follower:
+  ros__parameters:
+    use_sim_time: true
+    loop_rate: 20
+    # false: a missed waypoint is recorded in the result and the route
+    # continues. Stopping the whole run on one miss would throw away the
+    # measurement that matters — how many of N it actually reached.
+    stop_on_failure: false
+    # The tour's per-goal budget is 400 s; a multi-lap route must be allowed
+    # to exceed nav2's default result timeout or a healthy long run is
+    # reported as a failure.
+    action_server_result_timeout: 3600.0
+    waypoint_task_executor_plugin: "wait_at_waypoint"
+    wait_at_waypoint:
+      plugin: "nav2_waypoint_follower::WaitAtWaypoint"
+      enabled: True
+      # Milliseconds. Zero would chain goals with no settling at all; the
+      # separate-goal tour needed 15 s between goals to stop a still-moving
+      # robot contaminating the next leg, and this is the continuous-route
+      # equivalent kept deliberately short.
+      waypoint_pause_duration: 500
+
+global_costmap:
+  global_costmap:
+    ros__parameters:
+      use_sim_time: true
+      global_frame: map
+      robot_base_frame: base_link
+      transform_tolerance: 1.0
+      update_frequency: 1.0
+      publish_frequency: 1.0
+      # Full /global_costmap/costmap grid: publish every tick, not just on
+      # geometry change. With rolling_window=false the origin never moves, so
+      # the full grid would otherwise publish once at startup and then only
+      # delta updates flow — Foxglove/RViz clients that connect later never
+      # see it. Set true so the global layer is always visible.
+      always_send_full_costmap: true
+      rolling_window: false
+      # Fixed window sized to cover the whole amr_office map from the
+      # robot's spawn pose: with rolling_window=false the costmap origin
+      # is anchored at (spawn - size/2), so a 100x100 (5x5 m) window only
+      # reached ~[-1,4]x[-1,4] — goals beyond it were "no valid path".
+      # 400x320 (20x16 m) covers the 11x9 m map from the (1.5, 1.5) spawn
+      # with margin. Keep in sync with the world/map dimensions.
+      width: 400
+      height: 320
+      resolution: 0.05
+      robot_radius: 0.25
+      # Static + inflation only: the occupancy map already contains every
+      # wall/obstacle. The scan-based obstacle layer is redundant here and
+      # harmful — under sim-time TF lag its transformed points smear around
+      # a turning robot ("Start occupied" / phantom walls). The local
+      # costmap keeps the obstacle layer for near-field collision checks.
+      plugins: ["static_layer", "inflation_layer"]
+      static_layer:
+        plugin: "nav2_costmap_2d::StaticLayer"
+        map_topic: /map
+        subscribe_to_updates: true
+      # No obstacle_layer block here on purpose. It is not in `plugins`
+      # above, so nav2 never loads it and never declares its parameters —
+      # verified live: the global costmap declares 44 parameters and not one
+      # of the 11 keys this block used to carry. Twelve lines that read as
+      # configuration and configure nothing. If the layer is ever wanted back
+      # here, add it to `plugins` first; the local costmap's copy is the
+      # working reference.
+      inflation_layer:
+        plugin: "nav2_costmap_2d::InflationLayer"
+        cost_scaling_factor: 3.0
+        # 0.55 m, nav2's reference value. It was 0.35 (robot radius + 0.1) on
+        # the belief that a wider inflation made the 1.4-1.6 m doors
+        # impassable. It does not: cells within robot_radius (0.25) are
+        # inscribed and hard-vetoed; everything beyond that is graded COST,
+        # not a block. The hard-passable band through a 1.6 m door stays
+        # 1.6 - 2(0.25) = 1.1 m whatever the inflation radius is, and the
+        # door centre sits 0.8 m from each wall — beyond 0.55, so zero
+        # inflation cost.
+        #
+        # What 0.35 did cost was the gradient. Past 0.36 m from a wall every
+        # cell was equally free, so nothing pulled the robot toward open
+        # space and it tracked along walls. Measured 2026-08-14, a failed g3
+        # left the robot at (7.47, 5.13) — 0.23 m from the W2 wall face,
+        # inside the inscribed radius, where every trajectory is vetoed
+        # ("No valid trajectories out of 440") and the next goal then aborts
+        # instantly on an in-collision start.
+        inflation_radius: 0.55
+      # (global costmap: static + inflation only — see plugins above)
+
+local_costmap:
+  local_costmap:
+    ros__parameters:
+      use_sim_time: true
+      global_frame: odom
+      robot_base_frame: base_link
+      transform_tolerance: 1.0
+      update_frequency: 5.0
+      publish_frequency: 2.0
+      # Full /local_costmap/costmap grid: publish every tick (see global
+      # costmap note; keeps both layers visible to late-joining clients).
+      always_send_full_costmap: true
+      rolling_window: true
+      width: 4
+      height: 4
+      resolution: 0.05
+      robot_radius: 0.25
+      plugins: ["obstacle_layer", "inflation_layer"]
+      obstacle_layer:
+        plugin: "nav2_costmap_2d::ObstacleLayer"
+        observation_sources: scan
+        scan:
+          topic: /scan
+          max_obstacle_height: 2.0
+          clearing: true
+          marking: true
+          data_type: "LaserScan"
+          raytrace_max_range: 8.0
+          raytrace_min_range: 0.0
+          obstacle_max_range: 8.0
+          obstacle_min_range: 0.0
+      inflation_layer:
+        plugin: "nav2_costmap_2d::InflationLayer"
+        cost_scaling_factor: 3.0
+        # Keep in step with the global costmap — see the note there.
+        inflation_radius: 0.55
+
+lifecycle_manager:
+  ros__parameters:
+    use_sim_time: true
+    autostart: true
+    node_names: ["controller_server", "planner_server", "smoother_server", "behavior_server", "bt_navigator", "velocity_smoother", "waypoint_follower"]

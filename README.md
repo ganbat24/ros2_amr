@@ -227,7 +227,7 @@ map
 | Sensor suite | 2D LiDAR + IMU + RGB camera | Level B — sufficient for indoor navigation, extensible |
 | Control | `ros2_control` + `diff_drive_controller` | Standard ROS 2 control framework, well-maintained |
 | Localization | EKF + SLAM + AMCL | EKF fuses wheel + IMU; SLAM for mapping; AMCL for localization |
-| Navigation | Smac 2D + DWB | Smac offers better path quality than NavFn; DWB is the standard local planner |
+| Navigation | Smac 2D + RPP | Compared against DWB, MPPI, and Theta* (2026-08-19); untuned RPP beat a heavily-tuned DWB baseline by 2-3x on the hardest leg — see [Controller & Planner Comparison](#controller--planner-comparison) below. DWB retained as an alternate (`nav2_params_dwb.yaml`) |
 | Odom source | EKF only | Controller does not publish odom TF — avoids conflict with EKF fused odometry |
 
 ## Contributing
@@ -305,7 +305,11 @@ W2 gap into the top-right room), each final pose within 0.25 m.
 Repeatable over a **ten-tour campaign: 40/40 goals, 10/10 tours, no
 aborts and no retries** (2026-08-14, `9b48dd6`, 12-core WSL2, RTF 1.0).
 Every run came from the same commit with a clean working tree, which the
-harness checks and reports rather than assumes:
+harness checks and reports rather than assumes. This campaign used DWB +
+SmacPlanner2D, the default at the time — as of 2026-08-19 the default is
+RPP + SmacPlanner2D (faster on every leg; see
+[Controller & Planner Comparison](#controller--planner-comparison) below),
+and this table describes what is now `nav2_params_dwb.yaml`:
 
 | goal | success | median | min–max |
 |---|---|---|---|
@@ -356,13 +360,34 @@ the rate in both time bases along with the measured real-time factor.
 
 ### Controller & Planner Comparison
 
-The tuned DWB + SmacPlanner2D baseline above was A/B'd against three
-untuned nav2 alternatives (Regulated Pure Pursuit, MPPI, Theta*) on the same
-tour, one plugin swapped at a time. Headline: g3, the baseline's slowest and
-most variable leg (172 s median, 135–231 s over ten tours), drops to 53–91 s
-under every alternative — bigger than the baseline's own run-to-run spread.
-Full results, predictions-vs-actual, and evidence-strength caveats (N=3 per
-new arm, one flaky goal, one undiagnosed bring-up hang) are in
+The tuned DWB + SmacPlanner2D baseline (then the default) was A/B'd against
+three untuned nav2 alternatives — Regulated Pure Pursuit, MPPI, Theta* — one
+plugin swapped at a time. g3, the baseline's slowest and most variable leg
+(172 s median, 135–231 s over ten tours), dropped to 53–91 s under every
+alternative — bigger than the baseline's own run-to-run spread. **RPP won
+outright** — fastest on every leg, comparable-or-better reliability, and
+did it at plugin defaults with zero tuning:
+
+| controller + planner | success | g3 median | notes |
+|---|---|---|---|
+| RPP + SmacPlanner2D | 31/32 (97%) | 53 s | **default as of 2026-08-19** |
+| MPPI + SmacPlanner2D | 12/12 (100%) | 57 s | ~15-20% slower than RPP |
+| DWB + Theta* | 12/12 (100%) | 91 s | controller matters more than planner |
+| DWB + SmacPlanner2D (tuned) | 40/40 (100%) | 172 s | former default, kept as `nav2_params_dwb.yaml` |
+| DWB + SmacPlanner2D (untuned) | 10/12 (83%) | 76-78 s\* | \*only on goals that didn't abort — see retrospective |
+
+A follow-up tuning pass tried raising RPP's `rotate_to_heading_min_angle`
+(0.785→1.2 rad) — no measurable improvement at N=5, not adopted. Pairing
+RPP with Theta* instead of SmacPlanner2D also showed no measurable gain,
+confirming the controller was the lever that mattered, not the planner.
+
+A companion piece,
+[`docs/validation/dwb_tuning_retrospective.md`](docs/validation/dwb_tuning_retrospective.md),
+reviews DWB's tuning history against this data: the tuning bought
+reliability (83%→100%), not competitiveness — even fully tuned, DWB stayed
+2-3x slower than RPP's untuned defaults on the hardest leg. Full results,
+predictions-vs-actual, and evidence-strength caveats (mixed N across arms,
+one flaky goal, one undiagnosed bring-up hang) are in
 [`docs/validation/method_comparison.md`](docs/validation/method_comparison.md).
 
 ## License
