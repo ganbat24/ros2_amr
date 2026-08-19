@@ -38,6 +38,13 @@ STACK_PROCESS_NAMES = [
     'behavior_server', 'bt_navigator', 'velocity_smoother',
     'collision_monitor', 'waypoint_follower', 'lifecycle_manager',
     'parameter_bridge', 'twist_to_stamped.py', 'async_slam_toolbox_node',
+    # image_proc's rectifier: the camera bridge spawns it and, unlike every
+    # other node above, it was never in this list. Confirmed missing
+    # 2026-08-19 — 11 orphaned instances (one per tour) accumulated across
+    # a single session of back-to-back campaigns, each surviving teardown
+    # cleanly reporting success. Same overlapping-stack failure mode this
+    # list exists to prevent, just with a name nobody had added yet.
+    'rectify_node',
     # With use_composition the six nav2 servers and their lifecycle manager
     # live inside this one process and none of the names above match it.
     # Missing it would leave a whole composed nav2 stack running after a
