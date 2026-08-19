@@ -354,6 +354,17 @@ LiDAR delivers its full nominal 10 Hz — because every sim-time consumer
 is slowed by the same factor. `ros2 run amr_metrics scan_health` reports
 the rate in both time bases along with the measured real-time factor.
 
+### Controller & Planner Comparison
+
+The tuned DWB + SmacPlanner2D baseline above was A/B'd against three
+untuned nav2 alternatives (Regulated Pure Pursuit, MPPI, Theta*) on the same
+tour, one plugin swapped at a time. Headline: g3, the baseline's slowest and
+most variable leg (172 s median, 135–231 s over ten tours), drops to 53–91 s
+under every alternative — bigger than the baseline's own run-to-run spread.
+Full results, predictions-vs-actual, and evidence-strength caveats (N=3 per
+new arm, one flaky goal, one undiagnosed bring-up hang) are in
+[`docs/validation/method_comparison.md`](docs/validation/method_comparison.md).
+
 ## License
 
 See [LICENSE](LICENSE).
