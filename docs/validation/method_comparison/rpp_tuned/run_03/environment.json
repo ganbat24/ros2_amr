@@ -1,0 +1,20 @@
+{
+  "timestamp": "2026-08-19T14:06:10+0100",
+  "host": "wsl2",
+  "cores": 12,
+  "kernel": "6.18.33.2-microsoft-standard-WSL2",
+  "is_wsl": true,
+  "in_container": false,
+  "ros_distro": "jazzy",
+  "rmw": "<default>",
+  "ros_domain_id": "0",
+  "gz_version": "8.11.0",
+  "gz_binary": "/opt/ros/jazzy/opt/gz_tools_vendor/bin/gz",
+  "libgl_always_software": "",
+  "git_sha": "1e4f465167d1c60e6322aaf10e7dfd39546b6c2e",
+  "git_dirty": false,
+  "git_dirty_paths": [],
+  "launch_args": "params_file:=/home/ganbat/ros2_amr/install/amr_navigation/share/amr_navigation/config/nav2_params_rpp_tuned.yaml",
+  "real_time_factor": "1.0",
+  "restampers_running": []
+}

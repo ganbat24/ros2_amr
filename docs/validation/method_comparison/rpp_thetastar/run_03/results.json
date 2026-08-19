@@ -1,0 +1,43 @@
+{
+  "goals": [
+    {
+      "goal": "g1_top_right",
+      "x": 9.4,
+      "y": 7.4,
+      "status": "SUCCEEDED",
+      "wall_s": 50.3,
+      "started_epoch": 1787146631.811,
+      "ended_epoch": 1787146682.15
+    },
+    {
+      "goal": "g2_top_left",
+      "x": 3.2,
+      "y": 6.8,
+      "status": "SUCCEEDED",
+      "wall_s": 37.4,
+      "started_epoch": 1787146695.321,
+      "ended_epoch": 1787146732.756
+    },
+    {
+      "goal": "g3_bottom_right",
+      "x": 9.3,
+      "y": 1.5,
+      "status": "SUCCEEDED",
+      "wall_s": 44.9,
+      "started_epoch": 1787146747.757,
+      "ended_epoch": 1787146792.706
+    },
+    {
+      "goal": "g4_home",
+      "x": 1.5,
+      "y": 1.5,
+      "status": "SUCCEEDED",
+      "wall_s": 44.2,
+      "started_epoch": 1787146807.707,
+      "ended_epoch": 1787146851.87
+    }
+  ],
+  "succeeded": 4,
+  "total": 4,
+  "per_goal_timeout_s": 400.0
+}
