@@ -32,3 +32,11 @@
 - `nav2_smoother`
 - `nav2_velocity_smoother`
 - `nav2_waypoint_follower`
+- `nav2_regulated_pure_pursuit_controller` — default controller plugin
+- `nav2_mppi_controller` — `nav2_params_mppi.yaml` variant
+- `nav2_theta_star_planner` — `nav2_params_thetastar.yaml` variants
+
+The last three are pluginlib plugins named only in the params files.
+Nothing links against them, so they are pulled in on a developer box
+by the `navigation2` metapackage and absent anywhere rosdep resolved
+these package.xml deps instead — which is CI.
