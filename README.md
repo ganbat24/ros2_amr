@@ -19,7 +19,9 @@ Professional ROS 2 Jazzy AMR stack for differential-drive mobile robots — simu
 - [Sensor Topics](#sensor-topics)
 - [Decision Rationale](#decision-rationale)
 - [Contributing](#contributing)
-- [Status](#status)
+- [SLAM Mapping](#slam-mapping)
+- [Validation (amr_metrics)](#validation-amr_metrics)
+- [Controller & Planner Comparison](#controller--planner-comparison)
 - [License](#license)
 
 ## Quick Start
@@ -234,15 +236,9 @@ map
 
 See the contributing guidelines in the project documentation.
 
-## Status
+## SLAM Mapping
 
-The stack is a **working simulation baseline**: the full pipeline
-(control, sensors, localization, navigation) is verified live in Docker
-on Jazzy + Gazebo Harmonic. `colcon test` over the eight `amr_*`
-packages reports **114 test cases across 40 CTest targets, 0 errors and
-0 failures** (measured 2026-08-14; the two counts differ because each
-ament lint target expands into one case per file, and the workspace's
-vendored `gz_ros2_control` overlay is excluded). SLAM Toolbox mapping is selectable via `use_slam:=true`; AMCL with the
+SLAM Toolbox mapping is selectable via `use_slam:=true`; AMCL with the
 pre-built map remains the default.
 
 **Mapping is driven by `slam_survey`, not by the goal tour.** The tour
@@ -281,7 +277,7 @@ coverage at 0.618 m median error — the offset, not the map. Real-hardware
 bringup (`amr_control/controller_manager.launch.py`) is wired but
 untested — it needs a hardware interface plugin in the URDF.
 
-### Validation (amr_metrics)
+## Validation (amr_metrics)
 
 `amr_metrics` scripts a goal tour and produces a metrics report
 (trajectory overlay, odometry drift vs ground truth, AMCL localization
@@ -367,7 +363,7 @@ LiDAR delivers its full nominal 10 Hz — because every sim-time consumer
 is slowed by the same factor. `ros2 run amr_metrics scan_health` reports
 the rate in both time bases along with the measured real-time factor.
 
-### Controller & Planner Comparison
+## Controller & Planner Comparison
 
 The tuned DWB + SmacPlanner2D baseline (then the default) was A/B'd against
 three untuned nav2 alternatives — Regulated Pure Pursuit, MPPI, Theta* — one
