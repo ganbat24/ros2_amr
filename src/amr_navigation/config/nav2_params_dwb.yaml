@@ -2,8 +2,8 @@
 # RPP (untuned defaults) + SmacPlanner2D is now the default (see
 # nav2_params.yaml) -- fastest on every leg measured, comparable-or-better
 # reliability, and about a quarter the tuning surface area DWB needed to
-# reach parity. Full reasoning: docs/validation/method_comparison.md and
-# docs/validation/dwb_tuning_retrospective.md.
+# reach parity. Full reasoning: README.md's "Controller & Planner
+# Comparison" section.
 #
 # Kept as a reference arm, not deleted: this is still the best-measured DWB
 # configuration for this map (40/40 goals over 10 tours, 2026-08-14), and

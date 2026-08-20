@@ -7,9 +7,8 @@
 # tuning experiment (nav2_params_rpp_tuned.yaml) showed no measurable
 # improvement over these defaults at N=5 and was not adopted.
 #
-# Full reasoning, the untuned-DWB reference run, and the DWB tuning
-# retrospective: docs/validation/method_comparison.md and
-# docs/validation/dwb_tuning_retrospective.md.
+# Full reasoning and the untuned-DWB reference run: README.md's
+# "Controller & Planner Comparison" section.
 #
 # Alternates, all byte-identical to this file except the noted swap:
 #   nav2_params_dwb.yaml           - the previous default (tuned DWB)

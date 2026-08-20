@@ -264,7 +264,7 @@ map. It is calibrated in both directions: 100% / 100% / 0.000 m on the
 pre-built map, 0% coverage on an empty one.
 
 Measured on a 21-waypoint survey (259 s, 21/21 waypoints,
-`docs/validation/slam_map_quality.png`):
+`docs/validation/slam/slam_map_quality.png`):
 
 | metric | value |
 |---|---|
@@ -330,7 +330,7 @@ identical runs, so any tuning claim resting on a single tour is inside the
 noise. This project has made that mistake and the campaign tooling exists
 because of it.
 
-Committed report `docs/validation/metrics_report_full_tour.png` is the
+Committed report `docs/validation/full_tour/metrics_report_full_tour.png` is the
 median run of that campaign by total tour time (422 s of 361–507 s), not
 the best one. Measured over it: AMCL localization error median
 **0.063 m** (p95 0.140 m, max 0.202 m, **0.0%** of 2273 samples above
@@ -381,14 +381,14 @@ A follow-up tuning pass tried raising RPP's `rotate_to_heading_min_angle`
 RPP with Theta* instead of SmacPlanner2D also showed no measurable gain,
 confirming the controller was the lever that mattered, not the planner.
 
-A companion piece,
-[`docs/validation/dwb_tuning_retrospective.md`](docs/validation/dwb_tuning_retrospective.md),
-reviews DWB's tuning history against this data: the tuning bought
-reliability (83%→100%), not competitiveness — even fully tuned, DWB stayed
-2-3x slower than RPP's untuned defaults on the hardest leg. Full results,
-predictions-vs-actual, and evidence-strength caveats (mixed N across arms,
-one flaky goal, one undiagnosed bring-up hang) are in
-[`docs/validation/method_comparison.md`](docs/validation/method_comparison.md).
+DWB's tuning history bought reliability (83%→100%), not competitiveness —
+even fully tuned, it stayed 2-3x slower than RPP's untuned defaults on the
+hardest leg. Evidence strength: the alternatives are N=3 (regression-screen
+depth) against the baseline's N=10 — the 2-3x gap clears the baseline's own
+96 s run-to-run spread, so it's real, but finer differences between
+RPP/MPPI/Theta* are not resolved at this N. RPP's one failed goal in that
+N=3 phase has a log signature pointing at an infrastructure flake rather
+than RPP itself (it did not recur across five further tours).
 
 ## License
 
