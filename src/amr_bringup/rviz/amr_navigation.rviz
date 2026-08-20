@@ -89,16 +89,20 @@ Visualization Manager:
         History Policy: Keep Last
       Color: 0; 255; 0
       Value: true
-    - Class: rviz_default_plugins/PoseArray
+    - Class: nav2_rviz_plugins/ParticleCloud
       Enabled: true
       Name: ParticleCloud
       Topic:
-        Value: /particlecloud
+        Value: /particle_cloud
         Depth: 5
         Durability Policy: Volatile
         History Policy: Keep Last
-      Shape: Arrow
+        Reliability Policy: Best Effort
+      Shape: Arrow (Flat)
       Color: 255; 25; 0
+      Min Arrow Length: 0.02
+      Max Arrow Length: 0.3
+      Alpha: 1
       Value: true
   Enabled: true
   Global Options:
