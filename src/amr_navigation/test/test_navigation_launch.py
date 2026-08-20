@@ -11,9 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import glob
 import importlib.util
 import os
 import unittest
+import xml.etree.ElementTree as ET
 
 from ament_index_python.packages import get_package_share_directory
 from ament_index_python.resources import get_resource, has_resource
@@ -33,6 +35,50 @@ def _load_navigation_launch_module():
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+# dwb_core registers its classes under its own namespace, but this package
+# pulls it in through the nav2_dwb_controller metapackage rather than by
+# name. Every other plugin namespace here is also its package name.
+PLUGIN_PACKAGE_ALIASES = {'dwb_core': 'nav2_dwb_controller'}
+
+
+def _declared_dependencies():
+    """Every package amr_navigation's installed package.xml declares."""
+    path = os.path.join(
+        get_package_share_directory('amr_navigation'), 'package.xml')
+    root = ET.parse(path).getroot()
+    return {element.text.strip()
+            for tag in ('depend', 'build_depend', 'exec_depend')
+            for element in root.iter(tag) if element.text}
+
+
+def _plugin_classes(node):
+    """Every value of a `plugin:` key anywhere in a parsed params file."""
+    found = []
+    if isinstance(node, dict):
+        for key, value in node.items():
+            if key == 'plugin' and isinstance(value, str):
+                found.append(value)
+            else:
+                found += _plugin_classes(value)
+    elif isinstance(node, list):
+        for value in node:
+            found += _plugin_classes(value)
+    return found
+
+
+def _configured_plugins():
+    """(params file, plugin class) for every shipped nav2 params file."""
+    config_dir = os.path.join(
+        get_package_share_directory('amr_navigation'), 'config')
+    found = []
+    for path in sorted(glob.glob(os.path.join(config_dir, '*.yaml'))):
+        with open(path, 'r') as f:
+            config = yaml.safe_load(f)
+        for plugin in sorted(set(_plugin_classes(config))):
+            found.append((os.path.basename(path), plugin))
+    return found
 
 
 def generate_test_description():
@@ -114,3 +160,34 @@ class TestNavigationLaunch(unittest.TestCase):
                 name, config,
                 '%s is composed but nav2_params.yaml has no block for it, '
                 'so it would run entirely on defaults' % name)
+
+    def test_params_plugin_packages_are_declared(self):
+        """
+        Every plugin a params file names must come from a declared package.
+
+        pluginlib plugins are loaded by string and linked against by nothing,
+        so an undeclared one is present on any machine that installed the
+        navigation2 metapackage and missing everywhere rosdep resolved these
+        package.xml deps instead — which is CI. It then fails at the worst
+        possible moment: the server cannot create the plugin, its configure
+        fails, the lifecycle manager aborts bring-up, and the only symptom is
+        that nothing ever reaches active.
+
+        That is what promoting RegulatedPurePursuitController to the default
+        cost on 2026-08-20: the nav smoke test spent four minutes waiting for
+        lifecycle nodes to go active and timed out with nothing in the job log
+        to say why. The check above covers the composed rclcpp_components;
+        this one covers the params, for every variant file shipped, not just
+        the default.
+        """
+        declared = _declared_dependencies()
+        checked = _configured_plugins()
+        self.assertTrue(checked, 'no plugins found — the scan is broken')
+        for params_file, plugin in checked:
+            package = plugin.split('::')[0]
+            package = PLUGIN_PACKAGE_ALIASES.get(package, package)
+            self.assertIn(
+                package, declared,
+                '%s loads %s, but amr_navigation does not declare %s, so '
+                'rosdep never installs it in a clean environment'
+                % (params_file, plugin, package))
