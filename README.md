@@ -297,54 +297,63 @@ ros2 run amr_metrics run_validation \
   --out-dir /tmp/amr_validation
 ```
 
-Verified on the amr_office world (10 x 8 m, two doors): the **full
-four-goal tour succeeds 4/4** — g1 top-right, g2 top-left, g3
-bottom-right, g4 home — every leg crossing at least one door (D1 and the
-W2 gap into the top-right room), each final pose within 0.25 m.
+Verified on the amr_office world (10 x 8 m, two doors) with the current
+default (RPP + SmacPlanner2D): the **full four-goal tour succeeds 4/4** —
+g1 top-right, g2 top-left, g3 bottom-right, g4 home — every leg crossing
+at least one door (D1 and the W2 gap into the top-right room), each final
+pose within 0.25 m.
 
-Repeatable over a **ten-tour campaign: 40/40 goals, 10/10 tours, no
-aborts and no retries** (2026-08-14, `9b48dd6`, 12-core WSL2, RTF 1.0).
-Every run came from the same commit with a clean working tree, which the
-harness checks and reports rather than assumes. This campaign used DWB +
-SmacPlanner2D, the default at the time — as of 2026-08-19 the default is
-RPP + SmacPlanner2D (faster on every leg; see
-[Controller & Planner Comparison](#controller--planner-comparison) below),
-and this table describes what is now `nav2_params_dwb.yaml`:
+Measured over a **three-tour campaign: 11/12 goals (92%), 2/3 tours
+clean** (2026-08-20, `421db18`, 12-core WSL2, RTF 1.0, all three runs from
+the same clean commit):
 
 | goal | success | median | min–max |
 |---|---|---|---|
-| g1 top-right | 10/10 | 100 s | 76–148 s |
-| g2 top-left | 10/10 | 62 s | 56–75 s |
-| g3 bottom-right | 10/10 | 172 s | 135–231 s |
-| g4 home | 10/10 | 74 s | 71–94 s |
+| g1 top-right | 3/3 | 59 s | 59–61 s |
+| g2 top-left | 2/3 | 43 s | 41–44 s |
+| g3 bottom-right | 3/3 | 64 s | 54–65 s |
+| g4 home | 3/3 | 51 s | 48–53 s |
+
+The one miss (run 3, g2) is a genuinely new failure signature, not the
+result-delivery timeout documented for RPP's first comparison campaign:
+`bt_navigator_navigate_to_pose_rclcpp_node: Timed out while waiting for
+action server to acknowledge goal request for compute_path_to_pose` —
+bt_navigator's own client to `planner_server` never got a goal-request
+*acknowledgement*, 3.5 s after dispatch, with no `planner_server` log
+activity in that window either way. Not root-caused here; recorded rather
+than waved off as the same known flake, since the log shape genuinely
+differs. N=3 is a regression screen, not a resolved reliability number —
+see [Controller & Planner Comparison](#controller--planner-comparison)
+below for how that caveat applies to this default generally.
 
 Reproduce with:
 
 ```bash
-ros2 run amr_metrics orchestrate --campaign 10 --out-dir /tmp/camp
+ros2 run amr_metrics orchestrate --campaign 3 --out-dir /tmp/camp
 ros2 run amr_metrics tour_stats /tmp/camp/run_* --markdown
 ```
 
-The spread matters as much as the median: g3 varies by 96 s across
-identical runs, so any tuning claim resting on a single tour is inside the
-noise. This project has made that mistake and the campaign tooling exists
-because of it.
-
-Committed report `docs/validation/full_tour/metrics_report_full_tour.png` is the
-median run of that campaign by total tour time (422 s of 361–507 s), not
-the best one. Measured over it: AMCL localization error median
-**0.063 m** (p95 0.140 m, max 0.202 m, **0.0%** of 2273 samples above
-0.3 m) over 37.7 m travelled. Plots are in sim time (from `/clock`); the
-odometry trace is aligned to ground truth with the full rigid transform
-at run start.
+Committed report `docs/validation/full_tour/metrics_report_full_tour.png`
+is run 2 of that campaign — the lower-time run of the two that went 4/4
+(208 s vs 214 s), not the failed one. Measured over it: AMCL localization
+error median **0.068 m** (p95 0.148 m, max 0.189 m, **0.0%** of 1402
+samples above 0.3 m) over 33.2 m travelled — a shorter, straighter path
+than the retired DWB default's 37.7 m single-reference run, consistent
+with RPP's more direct routing seen throughout the method comparison.
+Plots are in sim time (from `/clock`); the odometry trace is aligned to
+ground truth with the full rigid transform at run start.
 
 `environment.json` beside the report records the host, core count,
 middleware, Gazebo build, real-time factor, git SHA, **whether the
-working tree was dirty, and the launch arguments**. The last two exist
-because the previous committed report did not have them: it was produced
-from a tree carrying an uncommitted `default_server_timeout` fix, so the
-SHA recorded next to it named a commit that did not contain the change
-which made the tour pass. This one reports `git_dirty: false`.
+working tree was dirty, and the launch arguments** — fields added after
+an earlier committed report was produced from a dirty tree whose recorded
+SHA didn't contain the fix that made the tour pass. This one reports
+`git_dirty: false`.
+
+For comparison, the retired tuned-DWB default (`nav2_params_dwb.yaml`)
+was **repeatable over a ten-tour campaign: 40/40 goals, 10/10 tours, no
+aborts and no retries** (2026-08-14, `9b48dd6`) — a much deeper N, but
+2-3x slower on every leg (see below) and no longer the default.
 
 The tour is gated on drive-chain readiness: the gz_ros2_control bridge
 needs a warm-up after launch, and `orchestrate` probes odometry until it
@@ -370,11 +379,20 @@ did it at plugin defaults with zero tuning:
 
 | controller + planner | success | g3 median | notes |
 |---|---|---|---|
-| RPP + SmacPlanner2D | 31/32 (97%) | 53 s | **default as of 2026-08-19** |
+| RPP + SmacPlanner2D | 42/44 (95%) | 53 s | **default as of 2026-08-19** |
 | MPPI + SmacPlanner2D | 12/12 (100%) | 57 s | ~15-20% slower than RPP |
 | DWB + Theta* | 12/12 (100%) | 91 s | controller matters more than planner |
 | DWB + SmacPlanner2D (tuned) | 40/40 (100%) | 172 s | former default, kept as `nav2_params_dwb.yaml` |
-| DWB + SmacPlanner2D (untuned) | 10/12 (83%) | 76-78 s\* | \*only on goals that didn't abort — see retrospective |
+| DWB + SmacPlanner2D (untuned) | 10/12 (83%) | 76-78 s\* | \*only on goals that didn't abort — see below |
+
+The RPP + SmacPlanner2D count now pools three campaigns at this exact
+default config, including the N=3 full-tour campaign above
+(2026-08-20) — whose one miss is a distinct, not-yet-diagnosed
+action-acknowledgement timeout, not the earlier result-delivery
+signature. g3 stayed in the same neighborhood (54-65 s median 64 s
+there vs 53 s median across the original comparison campaigns) —
+consistent within this project's known run-to-run spread, not a
+regression.
 
 A follow-up tuning pass tried raising RPP's `rotate_to_heading_min_angle`
 (0.785→1.2 rad) — no measurable improvement at N=5, not adopted. Pairing
