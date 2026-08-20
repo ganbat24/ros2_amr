@@ -6,7 +6,7 @@ ROS 2 Jazzy stack for a differential-drive AMR — simulation-first, portable to
 
 RViz demo, full 4-goal tour at 5x speed:
 
-<video src="docs/media/rviz_navigation_demo.mp4" controls autoplay loop muted playsinline width="600">
+<video src="https://github.com/user-attachments/assets/412aacff-7f63-47be-813f-19b6ea95c37c" controls autoplay loop muted playsinline width="600">
   Your browser doesn't support inline video — see
   <a href="docs/media/rviz_navigation_demo.mp4">docs/media/rviz_navigation_demo.mp4</a>.
 </video>
