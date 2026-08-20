@@ -13,23 +13,7 @@ RViz demo, full 4-goal tour at 5x speed:
 
 ## Contents
 
-- [Quick Start](#quick-start)
-- [What This Stack Does](#what-this-stack-does)
-- [Architecture](#architecture)
-- [Package Overview](#package-overview)
-- [Build & Development](#build--development)
-- [Simulation Bringup](#simulation-bringup)
-- [Waypoint Following](#waypoint-following)
-- [Visualization](#visualization)
-- [Controller Tuning](#controller-tuning)
-- [TF Tree](#tf-tree)
-- [Sensor Topics](#sensor-topics)
-- [Decision Rationale](#decision-rationale)
-- [Contributing](#contributing)
-- [SLAM Mapping](#slam-mapping)
-- [Validation (amr_metrics)](#validation-amr_metrics)
-- [Controller & Planner Comparison](#controller--planner-comparison)
-- [License](#license)
+[Quick Start](#quick-start) · [What This Stack Does](#what-this-stack-does) · [Architecture](#architecture) · [Package Overview](#package-overview) · [Build & Development](#build--development) · [Simulation Bringup](#simulation-bringup) · [Waypoint Following](#waypoint-following) · [Visualization](#visualization) · [Controller Tuning](#controller-tuning) · [TF Tree](#tf-tree) · [Sensor Topics](#sensor-topics) · [Decision Rationale](#decision-rationale) · [Contributing](#contributing) · [SLAM Mapping](#slam-mapping) · [Validation](#validation-amr_metrics) · [Controller & Planner Comparison](#controller--planner-comparison) · [License](#license)
 
 ## Quick Start
 
