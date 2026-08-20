@@ -114,13 +114,11 @@ ros2 launch amr_bringup system.launch.py headless:=true
 ros2 launch amr_bringup system.launch.py use_composition:=true
 ```
 
-`use_composition:=true` loads the six Nav2 servers and their lifecycle
-manager into one `component_container_isolated`. They become a single DDS
-participant, which removes the discovery race that the process-per-node
-path handles with a settle delay — the composed path orders the component
-loads instead of waiting, with the lifecycle manager last. See
-[Architecture](docs/architecture.md#process-layout) for why the container
-must be the *isolated* variant.
+`use_composition:=true` loads the Nav2 servers into one
+`component_container_isolated` instead of one process each.
+Process-per-node stays the default — see
+[Architecture → Process Layout](docs/architecture.md#process-layout) for the
+measured comparison and why.
 
 This launches, in order:
 1. `robot_state_publisher` (no `joint_state_publisher` — Gazebo provides `/joint_states`)
@@ -237,7 +235,7 @@ map
 | Sensor suite | 2D LiDAR + IMU + RGB camera | Level B — sufficient for indoor navigation, extensible |
 | Control | `ros2_control` + `diff_drive_controller` | Standard ROS 2 control framework, well-maintained |
 | Localization | EKF + SLAM + AMCL | EKF fuses wheel + IMU; SLAM for mapping; AMCL for localization |
-| Navigation | Smac 2D + RPP | Compared against DWB, MPPI, and Theta* (2026-08-19); untuned RPP beat a heavily-tuned DWB baseline by 2-3x on the hardest leg — see [Controller & Planner Comparison](#controller--planner-comparison) below. DWB retained as an alternate (`nav2_params_dwb.yaml`) |
+| Navigation | Smac 2D + RPP | Untuned RPP beat a heavily-tuned DWB baseline 2-3x on the hardest leg — see [Controller & Planner Comparison](#controller--planner-comparison). DWB kept as an alternate (`nav2_params_dwb.yaml`) |
 | Odom source | EKF only | Controller does not publish odom TF — avoids conflict with EKF fused odometry |
 
 ## Contributing
@@ -247,43 +245,17 @@ See the contributing guidelines in the project documentation.
 ## SLAM Mapping
 
 SLAM Toolbox mapping is selectable via `use_slam:=true`; AMCL with the
-pre-built map remains the default.
-
-**Mapping is driven by `slam_survey`, not by the goal tour.** The tour
-dispatches to fixed coordinates up to 8 m away, and slam_toolbox starts
-with an empty map, so there is nothing to plan through — measured, it
-scores 1/4 with three goals aborting within 3–6 s. `slam_survey` instead
-drives a 21-waypoint coverage route by publishing `TwistStamped` directly
-to `/cmd_vel_stamped`, bypassing nav2 entirely, and captures `/map` from
-its own subscription:
+pre-built map remains the default. Mapping is driven by a dedicated
+21-waypoint survey, not the goal tour — the tour has nothing to plan
+through on an empty map:
 
 ```bash
 ros2 run amr_metrics orchestrate --tour --survey --out-dir /tmp/slam_run
 ```
 
-`map_quality` then scores the result against the world's own wall
-geometry — the world is generated from rectangles, so ground truth is
-exact and distances are computed analytically rather than against another
-map. It is calibrated in both directions: 100% / 100% / 0.000 m on the
-pre-built map, 0% coverage on an empty one.
-
-Measured on a 21-waypoint survey (259 s, 21/21 waypoints,
-`docs/validation/slam/slam_map_quality.png`):
-
-| metric | value |
-|---|---|
-| wall coverage | **93.1%** |
-| occupied-cell precision | **100.0%** |
-| occupied error median | **0.009 m** (p95 0.091 m, max 0.115 m) |
-| explored fraction | **99.0%** |
-
-1960 occupied cells against 2338 in the true geometry, none of them
-spurious. The map is saved in **world coordinates**: slam_toolbox origins
-its map at the robot's start pose, so the survey shifts the origin by the
-measured start position. Without that shift the same map scores 19.8%
-coverage at 0.618 m median error — the offset, not the map. Real-hardware
-bringup (`amr_control/controller_manager.launch.py`) is wired but
-untested — it needs a hardware interface plugin in the URDF.
+Measured against the world's exact wall geometry: **93.1% wall coverage,
+100.0% occupied-cell precision, 0.009 m median error**
+(`docs/validation/slam/slam_map_quality.png`).
 
 ## Validation (amr_metrics)
 
@@ -301,15 +273,10 @@ ros2 run amr_metrics run_validation \
   --out-dir /tmp/amr_validation
 ```
 
-Verified on the amr_office world (10 x 8 m, two doors) with the current
-default (RPP + SmacPlanner2D): the **full four-goal tour succeeds 4/4** —
-g1 top-right, g2 top-left, g3 bottom-right, g4 home — every leg crossing
-at least one door (D1 and the W2 gap into the top-right room), each final
-pose within 0.25 m.
-
-Measured over a **three-tour campaign: 11/12 goals (92%), 2/3 tours
-clean** (2026-08-20, `421db18`, 12-core WSL2, RTF 1.0, all three runs from
-the same clean commit):
+Current default (RPP + SmacPlanner2D) on the amr_office world (10 x 8 m,
+two doors): **full four-goal tour 4/4**, each leg crossing at least one
+door, final pose within 0.25 m. Over a **three-tour campaign: 11/12 goals
+(92%), 2/3 tours clean** (2026-08-20, `421db18`, 12-core WSL2, RTF 1.0):
 
 | goal | success | median | min–max |
 |---|---|---|---|
@@ -318,68 +285,31 @@ the same clean commit):
 | g3 bottom-right | 3/3 | 64 s | 54–65 s |
 | g4 home | 3/3 | 51 s | 48–53 s |
 
-The one miss (run 3, g2) is a genuinely new failure signature, not the
-result-delivery timeout documented for RPP's first comparison campaign:
-`bt_navigator_navigate_to_pose_rclcpp_node: Timed out while waiting for
-action server to acknowledge goal request for compute_path_to_pose` —
-bt_navigator's own client to `planner_server` never got a goal-request
-*acknowledgement*, 3.5 s after dispatch, with no `planner_server` log
-activity in that window either way. Not root-caused here; recorded rather
-than waved off as the same known flake, since the log shape genuinely
-differs. N=3 is a regression screen, not a resolved reliability number —
-see [Controller & Planner Comparison](#controller--planner-comparison)
-below for how that caveat applies to this default generally.
+The one miss (run 3, g2) was a `bt_navigator`→`planner_server`
+goal-acknowledgement timeout, not root-caused. N=3 is a regression screen,
+not a settled reliability number. AMCL localization error on the
+committed reference run (`docs/validation/full_tour/`): median **0.068 m**,
+max 0.189 m over 33.2 m travelled.
 
-Reproduce with:
+For comparison, the retired tuned-DWB default was **40/40 goals, 10/10
+tours** over a ten-tour campaign (2026-08-14, `9b48dd6`) — deeper N, but
+2-3x slower on every leg (see below).
 
 ```bash
 ros2 run amr_metrics orchestrate --campaign 3 --out-dir /tmp/camp
 ros2 run amr_metrics tour_stats /tmp/camp/run_* --markdown
 ```
 
-Committed report `docs/validation/full_tour/metrics_report_full_tour.png`
-is run 2 of that campaign — the lower-time run of the two that went 4/4
-(208 s vs 214 s), not the failed one. Measured over it: AMCL localization
-error median **0.068 m** (p95 0.148 m, max 0.189 m, **0.0%** of 1402
-samples above 0.3 m) over 33.2 m travelled — a shorter, straighter path
-than the retired DWB default's 37.7 m single-reference run, consistent
-with RPP's more direct routing seen throughout the method comparison.
-Plots are in sim time (from `/clock`); the odometry trace is aligned to
-ground truth with the full rigid transform at run start.
-
-`environment.json` beside the report records the host, core count,
-middleware, Gazebo build, real-time factor, git SHA, **whether the
-working tree was dirty, and the launch arguments** — fields added after
-an earlier committed report was produced from a dirty tree whose recorded
-SHA didn't contain the fix that made the tour pass. This one reports
-`git_dirty: false`.
-
-For comparison, the retired tuned-DWB default (`nav2_params_dwb.yaml`)
-was **repeatable over a ten-tour campaign: 40/40 goals, 10/10 tours, no
-aborts and no retries** (2026-08-14, `9b48dd6`) — a much deeper N, but
-2-3x slower on every leg (see below) and no longer the default.
-
-The tour is gated on drive-chain readiness: the gz_ros2_control bridge
-needs a warm-up after launch, and `orchestrate` probes odometry until it
-responds before dispatching any goal. Bring-up reaches `active` in about
-12 s.
-
-Under software rendering (no GPU passthrough) the simulation runs at a
-real-time factor of about 0.63, so a tour takes proportionally longer in
-wall-clock time. Sensor rates are unaffected in simulation time — the
-LiDAR delivers its full nominal 10 Hz — because every sim-time consumer
-is slowed by the same factor. `ros2 run amr_metrics scan_health` reports
-the rate in both time bases along with the measured real-time factor.
+Bring-up reaches `active` in ~12 s. Under software rendering (no GPU
+passthrough) real-time factor is ~0.63, so wall-clock time scales up
+accordingly; sim-time sensor rates are unaffected.
 
 ## Controller & Planner Comparison
 
 The tuned DWB + SmacPlanner2D baseline (then the default) was A/B'd against
-three untuned nav2 alternatives — Regulated Pure Pursuit, MPPI, Theta* — one
-plugin swapped at a time. g3, the baseline's slowest and most variable leg
-(172 s median, 135–231 s over ten tours), dropped to 53–91 s under every
-alternative — bigger than the baseline's own run-to-run spread. **RPP won
-outright** — fastest on every leg, comparable-or-better reliability, and
-did it at plugin defaults with zero tuning:
+three untuned Nav2 alternatives on g3, its slowest/most variable leg (172 s
+median over ten tours). **RPP won outright** — fastest on every leg,
+comparable-or-better reliability, zero tuning:
 
 | controller + planner | success | g3 median | notes |
 |---|---|---|---|
@@ -387,30 +317,14 @@ did it at plugin defaults with zero tuning:
 | MPPI + SmacPlanner2D | 12/12 (100%) | 57 s | ~15-20% slower than RPP |
 | DWB + Theta* | 12/12 (100%) | 91 s | controller matters more than planner |
 | DWB + SmacPlanner2D (tuned) | 40/40 (100%) | 172 s | former default, kept as `nav2_params_dwb.yaml` |
-| DWB + SmacPlanner2D (untuned) | 10/12 (83%) | 76-78 s\* | \*only on goals that didn't abort — see below |
-
-The RPP + SmacPlanner2D count now pools three campaigns at this exact
-default config, including the N=3 full-tour campaign above
-(2026-08-20) — whose one miss is a distinct, not-yet-diagnosed
-action-acknowledgement timeout, not the earlier result-delivery
-signature. g3 stayed in the same neighborhood (54-65 s median 64 s
-there vs 53 s median across the original comparison campaigns) —
-consistent within this project's known run-to-run spread, not a
-regression.
-
-A follow-up tuning pass tried raising RPP's `rotate_to_heading_min_angle`
-(0.785→1.2 rad) — no measurable improvement at N=5, not adopted. Pairing
-RPP with Theta* instead of SmacPlanner2D also showed no measurable gain,
-confirming the controller was the lever that mattered, not the planner.
+| DWB + SmacPlanner2D (untuned) | 10/12 (83%) | 76-78 s\* | \*only on goals that didn't abort |
 
 DWB's tuning history bought reliability (83%→100%), not competitiveness —
-even fully tuned, it stayed 2-3x slower than RPP's untuned defaults on the
-hardest leg. Evidence strength: the alternatives are N=3 (regression-screen
-depth) against the baseline's N=10 — the 2-3x gap clears the baseline's own
-96 s run-to-run spread, so it's real, but finer differences between
-RPP/MPPI/Theta* are not resolved at this N. RPP's one failed goal in that
-N=3 phase has a log signature pointing at an infrastructure flake rather
-than RPP itself (it did not recur across five further tours).
+even tuned, it stayed 2-3x slower than RPP's untuned defaults. A follow-up
+RPP tuning pass and an RPP+Theta* pairing both showed no measurable gain
+(N=5): the controller was the lever, not the planner. Evidence depth:
+alternatives at N=3 (regression-screen) against the baseline's N=10 — the
+2-3x gap clears run-to-run noise, finer differences don't.
 
 ## License
 
