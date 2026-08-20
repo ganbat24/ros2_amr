@@ -173,6 +173,16 @@ jobs:
           ros2 run amr_metrics orchestrate --launch --wait-ready --headless true --launch-timeout 240
           ros2 run amr_metrics run_validation --goals g2_top_left --out-dir /tmp/ci_nav_smoke --per-goal-timeout 180 --no-plot
 
+      # A failed smoke test says only that a wait timed out; every reason the
+      # stack could not come up is in the launch log, which the orchestrator
+      # writes to /tmp/amr_launch.log and nothing here collected. The
+      # 2026-08-20 failure (the default controller's plugin package was
+      # declared by no package.xml, so rosdep never installed it here) had to
+      # be diagnosed from apt metadata instead of from this run.
+      - name: Launch log on failure
+        if: failure()
+        run: tail -n 200 /tmp/amr_launch.log || echo "no launch log written"
+
       - name: Teardown navigation stack
         if: always()
         run: |
@@ -185,5 +195,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: nav-smoke-test-results
-          path: /tmp/ci_nav_smoke/**
+          path: |
+            /tmp/ci_nav_smoke/**
+            /tmp/amr_launch.log
           if-no-files-found: ignore
