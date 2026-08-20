@@ -2,7 +2,14 @@
 
 [![CI](https://github.com/ganbat24/ros2_amr/actions/workflows/ci.yml/badge.svg)](https://github.com/ganbat24/ros2_amr/actions/workflows/ci.yml) [![ROS 2](https://img.shields.io/badge/ROS%202-Jazzy-green)](https://docs.ros.org/en/jazzy/) [![Ubuntu](https://img.shields.io/badge/Ubuntu-24.04-orange)](https://releases.ubuntu.com/noble/) [![Gazebo](https://img.shields.io/badge/Gazebo-Harmonic-blue)](https://gazebosim.org/docs/harmonic) [![C++20](https://img.shields.io/badge/C%2B%2B-20-00599C)](https://en.cppreference.com/w/cpp/20) [![Python](https://img.shields.io/badge/Python-3.12-3776AB)](https://www.python.org/) [![License](https://img.shields.io/badge/License-Apache%202.0-blue)](LICENSE)
 
-Professional ROS 2 Jazzy AMR stack for differential-drive mobile robots — simulation-first on x86 host, extensible to real hardware and cloud runtime.
+ROS 2 Jazzy stack for a differential-drive AMR — simulation-first, portable to real hardware.
+
+RViz demo, full 4-goal tour at 5x speed:
+
+<video src="docs/media/rviz_navigation_demo.mp4" controls autoplay loop muted playsinline width="600">
+  Your browser doesn't support inline video — see
+  <a href="docs/media/rviz_navigation_demo.mp4">docs/media/rviz_navigation_demo.mp4</a>.
+</video>
 
 ## Contents
 
@@ -50,9 +57,7 @@ Open the repo in VS Code and let the dev container build automatically. It runs 
 
 ## What This Stack Does
 
-This stack provides a complete, simulation-validated baseline for a differential-drive autonomous mobile robot. It covers the full perception–localization–planning–control pipeline using ROS 2 Jazzy and Gazebo Harmonic, with all configuration files, launch scripts, and test scaffolding in place.
-
-The design assumes **simulation-first** development: every package is tested in Gazebo before touching real hardware. Hardware integration (CAN, GPIO, real sensor drivers) is deferred until a specific platform is selected.
+Covers the full perception–localization–planning–control pipeline in ROS 2 Jazzy + Gazebo Harmonic, with config, launch files, and tests in place. Every package is tested in sim before touching hardware — hardware integration (CAN, GPIO, real sensors) is deferred until a platform is chosen.
 
 ## Architecture
 
@@ -175,6 +180,9 @@ Or use the Docker compose RViz service:
 ```bash
 docker compose -f docker/docker-compose.yml up rviz
 ```
+
+See the demo video at the top of this README for what this config shows over
+a full 4-goal tour.
 
 ## Controller Tuning
 
